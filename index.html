@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scooter Fleet</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0f0f0f;
+    color: #ffffff;
+    min-height: 100vh;
+    padding: 16px;
+  }
+  h1 {
+    text-align: center;
+    font-size: 16px;
+    font-weight: 500;
+    color: #888888;
+    margin-bottom: 20px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .fleet-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+  }
+  .scooter-card {
+    background: #1a1a1a;
+    border-radius: 20px;
+    padding: 20px;
+    border: 1px solid #2a2a2a;
+  }
+  .scooter-card.offline {
+    opacity: 0.5;
+    border-color: #ff444433;
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .scooter-id {
+    font-size: 18px;
+    font-weight: 600;
+  }
+  .status-badge {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+  .status-badge.online {
+    background: #44ff8822;
+    color: #44ff88;
+  }
+  .status-badge.offline {
+    background: #ff444422;
+    color: #ff4444;
+  }
+  .telemetry-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .tel-item {
+    text-align: center;
+  }
+  .tel-label {
+    font-size: 10px;
+    color: #666666;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .tel-value {
+    font-size: 20px;
+    font-weight: 600;
+  }
+  .tel-unit {
+    font-size: 10px;
+    color: #444444;
+  }
+  .tel-value.green  { color: #44ff88; }
+  .tel-value.yellow { color: #ffcc00; }
+  .tel-value.red    { color: #ff4444; }
+  .tel-value.blue   { color: #44aaff; }
+  .tel-value.white  { color: #ffffff; }
+
+  .battery-bar {
+    width: 100%;
+    height: 6px;
+    background: #2a2a2a;
+    border-radius: 3px;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .battery-fill {
+    height: 100%;
+    transition: width 0.5s ease;
+  }
+
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .btn {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 12px;
+    padding: 12px 8px;
+    color: #ffffff;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+  .btn:active { transform: scale(0.95); }
+  .btn.full { grid-column: span 2; }
+  .btn.danger  { border-color: #ff444466; color: #ff4444; }
+  .btn.success { border-color: #44ff8866; color: #44ff88; }
+  .btn.blue    { border-color: #44aaff66; color: #44aaff; }
+  .btn.yellow  { border-color: #ffcc0066; color: #ffcc00; }
+  .btn-icon { font-size: 16px; margin-bottom: 4px; }
+
+  .last-seen {
+    text-align: center;
+    font-size: 10px;
+    color: #333333;
+    margin-top: 12px;
+  }
+  .no-scooters {
+    text-align: center;
+    color: #333333;
+    font-size: 14px;
+    margin-top: 60px;
+  }
+</style>
+</head>
+<body>
+
+<h1>⚡ Scooter Fleet</h1>
+<div class="fleet-grid" id="fleet"></div>
+
+<script>
+  const SERVER = '';  // empty = same host
+
+  function batteryColor(pct) {
+    if (pct > 50) return '#44ff88';
+    if (pct > 20) return '#ffcc00';
+    return '#ff4444';
+  }
+
+  function batteryClass(pct) {
+    if (pct > 50) return 'green';
+    if (pct > 20) return 'yellow';
+    return 'red';
+  }
+
+  function timeSince(ts) {
+    const sec = Math.floor((Date.now() - ts) / 1000);
+    if (sec < 5)  return 'just now';
+    if (sec < 60) return sec + 's ago';
+    return Math.floor(sec / 60) + 'm ago';
+  }
+
+  function sendCommand(id, action) {
+    fetch(SERVER + '/command/' + id, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action })
+    }).catch(e => console.log(e));
+  }
+
+  function renderScooter(id, d) {
+    const bpct = d.battery || 0;
+    const online = d.online;
+
+    return `
+    <div class="scooter-card ${online ? '' : 'offline'}">
+      <div class="card-header">
+        <div class="scooter-id">${id}</div>
+        <div class="status-badge ${online ? 'online' : 'offline'}">
+          ${online ? 'Online' : 'Offline'}
+        </div>
+      </div>
+
+      <div class="telemetry-grid">
+        <div class="tel-item">
+          <div class="tel-label">Speed</div>
+          <div class="tel-value white">${(d.speed || 0).toFixed(1)}</div>
+          <div class="tel-unit">mph</div>
+        </div>
+        <div class="tel-item">
+          <div class="tel-label">Battery</div>
+          <div class="tel-value ${batteryClass(bpct)}">${bpct.toFixed(0)}</div>
+          <div class="tel-unit">%</div>
+        </div>
+        <div class="tel-item">
+          <div class="tel-label">Mode</div>
+          <div class="tel-value yellow">${d.mode || '--'}</div>
+          <div class="tel-unit">mode</div>
+        </div>
+        <div class="tel-item">
+          <div class="tel-label">Voltage</div>
+          <div class="tel-value blue">${(d.voltage || 0).toFixed(1)}</div>
+          <div class="tel-unit">V</div>
+        </div>
+        <div class="tel-item">
+          <div class="tel-label">Brake</div>
+          <div class="tel-value ${d.brake ? 'red' : 'green'}">${d.brake ? 'ON' : 'OFF'}</div>
+          <div class="tel-unit">state</div>
+        </div>
+        <div class="tel-item">
+          <div class="tel-label">Light</div>
+          <div class="tel-value ${d.light ? 'yellow' : 'white'}">${d.light ? 'ON' : 'OFF'}</div>
+          <div class="tel-unit">light</div>
+        </div>
+      </div>
+
+      <div class="battery-bar">
+        <div class="battery-fill" style="width:${bpct}%; background:${batteryColor(bpct)}"></div>
+      </div>
+
+      <div class="controls">
+        <button class="btn danger full" onclick="sendCommand('${id}','brakeOn')">
+          <div class="btn-icon">🔒</div>Lock / Brake ON
+        </button>
+        <button class="btn success full" onclick="sendCommand('${id}','brakeOff')">
+          <div class="btn-icon">🔓</div>Unlock / Brake OFF
+        </button>
+        <button class="btn yellow" onclick="sendCommand('${id}','mode')">
+          <div class="btn-icon">⚡</div>Cycle Mode
+        </button>
+        <button class="btn blue" onclick="sendCommand('${id}','light')">
+          <div class="btn-icon">💡</div>Toggle Light
+        </button>
+        <button class="btn" onclick="sendCommand('${id}','walk')">
+          <div class="btn-icon">🚶</div>Walk Mode
+        </button>
+        <button class="btn danger" onclick="sendCommand('${id}','power')">
+          <div class="btn-icon">⏻</div>Power ON/OFF
+        </button>
+      </div>
+
+      <div class="last-seen">Last seen: ${timeSince(d.lastSeen)}</div>
+    </div>`;
+  }
+
+  function fetchFleet() {
+    fetch(SERVER + '/fleet')
+      .then(r => r.json())
+      .then(fleet => {
+        const container = document.getElementById('fleet');
+        const ids = Object.keys(fleet);
+
+        if (ids.length === 0) {
+          container.innerHTML = '<div class="no-scooters">No scooters connected yet</div>';
+          return;
+        }
+
+        container.innerHTML = ids
+          .map(id => renderScooter(id, fleet[id]))
+          .join('');
+      })
+      .catch(() => {
+        document.getElementById('fleet').innerHTML =
+          '<div class="no-scooters">Cannot reach server</div>';
+      });
+  }
+
+  setInterval(fetchFleet, 1000);
+  fetchFleet();
+</script>
+</body>
+</html>

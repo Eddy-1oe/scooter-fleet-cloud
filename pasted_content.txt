@@ -1,0 +1,1452 @@
+let's start with web app first, wifi, Live telemetry + remote controls
+
+12:11
+Perfect. Here is the plan:
+
+ESP32 connects to your WiFi router
+ESP32 runs a web server
+Any phone or PC on the same WiFi opens the app in browser
+Live telemetry updates every second
+Remote controls send commands back to ESP32
+Two parts to build
+Part 1 — ESP32 firmware — adds WiFi and web server to your existing code
+
+Part 2 — Web app — dashboard that runs in the browser
+
+Part 1 — Updated ESP32 firmware
+cpp
+#include <HardwareSerial.h>
+#include <WiFi.h>
+#include <WebServer.h>
+#include <ArduinoJson.h>
+
+// ==========================================
+// PIN DEFINITIONS — ESP32 WROOM
+// ==========================================
+#define RX_PIN          16
+#define CONTROLLER_BAUD 9600
+#define SW_PIN          15
+#define OPTO_PIN        26
+
+// ==========================================
+// WIFI CREDENTIALS
+// ==========================================
+const char* ssid     = "YOUR_WIFI_NAME";
+const char* password = "YOUR_WIFI_PASSWORD";
+
+HardwareSerial ctrlSerial(1);
+WebServer server(80);
+
+// ==========================================
+// SPEED SMOOTHING
+// ==========================================
+float smoothedSpeed = 0;
+
+// ==========================================
+// SCOOTER DATA STRUCTURE
+// ==========================================
+struct ScooterData {
+  float   battery;
+  float   voltage;
+  float   speedMph;
+  bool    brakeActive;
+  bool    isMoving;
+  bool    lightOn;
+  bool    diagMode;
+  String  mode;
+  bool    valid;
+};
+
+ScooterData scooter;
+
+// ==========================================
+// SPEED CALCULATION
+// ==========================================
+float calculateSpeed(
+    byte b3,
+    byte modeByte,
+    byte diagByte) {
+
+  float maxMph = 16.0;
+
+  if (diagByte == 0x06)      maxMph = 4.0;
+  else if (modeByte == 0x00) maxMph = 9.0;
+  else if (modeByte == 0x10) maxMph = 12.0;
+  else if (modeByte == 0x20) maxMph = 16.0;
+
+  float x = (float)b3 / 16.0;
+  float curve = pow(x, 0.55);
+  float mph = constrain(curve * maxMph, 0, maxMph);
+  mph = round(mph);
+
+  smoothedSpeed = (smoothedSpeed * 0.3) + (mph * 0.7);
+  return smoothedSpeed;
+}
+
+// ==========================================
+// PACKET PARSER
+// ==========================================
+float parseVoltage(byte raw) {
+  return (raw * 0.1) + 20.0;
+}
+
+float parseBattery(byte raw) {
+  float voltage = parseVoltage(raw);
+  float pct = ((voltage - 32.0) / 10.0) * 100.0;
+  return constrain(pct, 0, 100);
+}
+
+String parseMode(byte b8, byte b10) {
+  if (b10 == 0x06) return "DIAG";
+  switch (b8) {
+    case 0x00: return "ECO";
+    case 0x10: return "D";
+    case 0x20: return "S";
+    default:   return "UNKNOWN";
+  }
+}
+
+bool verifyChecksum(byte* pkt) {
+  byte sum = 0;
+  for (int i = 1; i <= 12; i++) sum += pkt[i];
+  return (sum == pkt[13]);
+}
+
+void parsePacket(byte* pkt) {
+  scooter.battery     = parseBattery(pkt[1]);
+  scooter.voltage     = parseVoltage(pkt[1]);
+  scooter.speedMph    = calculateSpeed(pkt[3], pkt[8], pkt[10]);
+  scooter.isMoving    = (pkt[3] > 0);
+  scooter.lightOn     = (pkt[5] & 0x40) != 0;
+  scooter.brakeActive = (pkt[6] == 0xFF);
+  scooter.mode        = parseMode(pkt[8], pkt[10]);
+  scooter.diagMode    = (pkt[10] == 0x06);
+  scooter.valid       = true;
+}
+
+// ==========================================
+// SW CONTROL FUNCTIONS
+// ==========================================
+void sw_pulse(int duration) {
+  pinMode(SW_PIN, OUTPUT);
+  digitalWrite(SW_PIN, HIGH);
+  delay(duration);
+  digitalWrite(SW_PIN, LOW);
+  pinMode(SW_PIN, INPUT);
+}
+
+void sw_powerToggle() {
+  pinMode(SW_PIN, OUTPUT);
+  digitalWrite(SW_PIN, HIGH);
+  delay(3000);
+  digitalWrite(SW_PIN, LOW);
+  pinMode(SW_PIN, INPUT);
+}
+
+void sw_cycleMode() {
+  sw_pulse(100);
+}
+
+void sw_toggleLight() {
+  sw_pulse(100);
+  delay(100);
+  sw_pulse(100);
+}
+
+void sw_walkMode() {
+  sw_pulse(500);
+  delay(100);
+  sw_pulse(100);
+}
+
+// ==========================================
+// BRAKE CONTROL
+// ==========================================
+void brakeOn() {
+  digitalWrite(OPTO_PIN, HIGH);
+}
+
+void brakeOff() {
+  digitalWrite(OPTO_PIN, LOW);
+}
+
+// ==========================================
+// WEB SERVER ROUTES
+// ==========================================
+
+// GET /data — returns live telemetry as JSON
+void handleData() {
+  StaticJsonDocument<256> doc;
+  doc["battery"]  = scooter.battery;
+  doc["voltage"]  = scooter.voltage;
+  doc["speed"]    = scooter.speedMph;
+  doc["moving"]   = scooter.isMoving;
+  doc["mode"]     = scooter.mode;
+  doc["brake"]    = scooter.brakeActive;
+  doc["light"]    = scooter.lightOn;
+  doc["diag"]     = scooter.diagMode;
+  doc["valid"]    = scooter.valid;
+
+  String json;
+  serializeJson(doc, json);
+  server.sendHeader("Access-Control-Allow-Origin", "*");
+  server.send(200, "application/json", json);
+}
+
+// POST /cmd — receives command from app
+void handleCommand() {
+  if (server.hasArg("action")) {
+    String action = server.arg("action");
+
+    if      (action == "power")  sw_powerToggle();
+    else if (action == "mode")   sw_cycleMode();
+    else if (action == "light")  sw_toggleLight();
+    else if (action == "walk")   sw_walkMode();
+    else if (action == "brakeOn")  brakeOn();
+    else if (action == "brakeOff") brakeOff();
+
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    server.send(200, "text/plain", "OK");
+  } else {
+    server.send(400, "text/plain", "Missing action");
+  }
+}
+
+// GET / — serves the web app HTML
+void handleRoot() {
+  String html = R"rawhtml(
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scooter Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0f0f0f;
+    color: #ffffff;
+    min-height: 100vh;
+    padding: 16px;
+  }
+  h1 {
+    text-align: center;
+    font-size: 18px;
+    font-weight: 500;
+    color: #aaaaaa;
+    margin-bottom: 20px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ff4444;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .status-dot.online { background: #44ff88; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .card {
+    background: #1a1a1a;
+    border-radius: 16px;
+    padding: 20px 16px;
+    text-align: center;
+    border: 1px solid #2a2a2a;
+  }
+  .card.full { grid-column: span 2; }
+  .card-label {
+    font-size: 11px;
+    color: #666666;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+  .card-value {
+    font-size: 36px;
+    font-weight: 600;
+    line-height: 1;
+  }
+  .card-unit {
+    font-size: 13px;
+    color: #666666;
+    margin-top: 4px;
+  }
+  .card-value.green  { color: #44ff88; }
+  .card-value.yellow { color: #ffcc00; }
+  .card-value.red    { color: #ff4444; }
+  .card-value.blue   { color: #44aaff; }
+  .card-value.white  { color: #ffffff; }
+
+  .battery-bar {
+    width: 100%;
+    height: 8px;
+    background: #2a2a2a;
+    border-radius: 4px;
+    margin-top: 10px;
+    overflow: hidden;
+  }
+  .battery-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: #44ff88;
+    transition: width 0.5s ease;
+  }
+
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .btn {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 16px;
+    padding: 18px 12px;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn:active { transform: scale(0.96); }
+  .btn.full { grid-column: span 2; }
+  .btn-icon { font-size: 22px; margin-bottom: 6px; }
+  .btn.danger {
+    border-color: #ff4444;
+    color: #ff4444;
+  }
+  .btn.success {
+    border-color: #44ff88;
+    color: #44ff88;
+  }
+  .btn.blue {
+    border-color: #44aaff;
+    color: #44aaff;
+  }
+  .btn.yellow {
+    border-color: #ffcc00;
+    color: #ffcc00;
+  }
+  .footer {
+    text-align: center;
+    font-size: 11px;
+    color: #333333;
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+
+<h1><span class="status-dot" id="dot"></span>Scooter</h1>
+
+<div class="grid">
+  <div class="card full">
+    <div class="card-label">Speed</div>
+    <div class="card-value white" id="speed">--</div>
+    <div class="card-unit">mph</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Battery</div>
+    <div class="card-value green" id="battery">--</div>
+    <div class="card-unit">percent</div>
+    <div class="battery-bar">
+      <div class="battery-fill" id="battbar" style="width:0%"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-label">Voltage</div>
+    <div class="card-value blue" id="voltage">--</div>
+    <div class="card-unit">volts</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Mode</div>
+    <div class="card-value yellow" id="mode">--</div>
+    <div class="card-unit">riding mode</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Status</div>
+    <div class="card-value white" id="moving">--</div>
+    <div class="card-unit">motion</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Brake</div>
+    <div class="card-value" id="brake">--</div>
+    <div class="card-unit">state</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Light</div>
+    <div class="card-value" id="light">--</div>
+    <div class="card-unit">headlight</div>
+  </div>
+</div>
+
+<div class="controls">
+  <button class="btn danger full" onclick="cmd('brakeOn')">
+    <div class="btn-icon">🔒</div>
+    Lock / Brake ON
+  </button>
+  <button class="btn success full" onclick="cmd('brakeOff')">
+    <div class="btn-icon">🔓</div>
+    Unlock / Brake OFF
+  </button>
+  <button class="btn yellow" onclick="cmd('mode')">
+    <div class="btn-icon">⚡</div>
+    Cycle Mode
+  </button>
+  <button class="btn blue" onclick="cmd('light')">
+    <div class="btn-icon">💡</div>
+    Toggle Light
+  </button>
+  <button class="btn" onclick="cmd('walk')">
+    <div class="btn-icon">🚶</div>
+    Walk Mode
+  </button>
+  <button class="btn danger" onclick="cmd('power')">
+    <div class="btn-icon">⏻</div>
+    Power ON/OFF
+  </button>
+</div>
+
+<div class="footer">Connected to scooter ESP32</div>
+
+<script>
+  function updateBatteryColor(pct) {
+    const el = document.getElementById('battery');
+    if (pct > 50) el.className = 'card-value green';
+    else if (pct > 20) el.className = 'card-value yellow';
+    else el.className = 'card-value red';
+  }
+
+  function fetchData() {
+    fetch('/data')
+      .then(r => r.json())
+      .then(d => {
+        document.getElementById('dot').className = 'status-dot online';
+        document.getElementById('speed').textContent = d.speed.toFixed(1);
+        document.getElementById('battery').textContent = d.battery.toFixed(0);
+        document.getElementById('battbar').style.width = d.battery + '%';
+        document.getElementById('voltage').textContent = d.voltage.toFixed(1);
+        document.getElementById('mode').textContent = d.mode;
+        document.getElementById('moving').textContent = d.moving ? 'Moving' : 'Stopped';
+        document.getElementById('brake').textContent = d.brake ? 'ON' : 'OFF';
+        document.getElementById('brake').className = 'card-value ' + (d.brake ? 'red' : 'green');
+        document.getElementById('light').textContent = d.light ? 'ON' : 'OFF';
+        document.getElementById('light').className = 'card-value ' + (d.light ? 'yellow' : 'white');
+        updateBatteryColor(d.battery);
+      })
+      .catch(() => {
+        document.getElementById('dot').className = 'status-dot';
+      });
+  }
+
+  function cmd(action) {
+    fetch('/cmd?action=' + action)
+      .then(() => setTimeout(fetchData, 500))
+      .catch(e => console.log(e));
+  }
+
+  // Update every second
+  setInterval(fetchData, 1000);
+  fetchData();
+</script>
+</body>
+</html>
+)rawhtml";
+
+  server.send(200, "text/html", html);
+}
+
+// ==========================================
+// PACKET BUFFER
+// ==========================================
+byte packetBuf[14];
+int  bufIndex  = 0;
+unsigned long lastByte = 0;
+
+// ==========================================
+// SETUP
+// ==========================================
+void setup() {
+  Serial.begin(115200);
+  delay(1500);
+
+  pinMode(OPTO_PIN, OUTPUT);
+  digitalWrite(OPTO_PIN, LOW);
+  pinMode(SW_PIN, INPUT);
+
+  // Connect to WiFi
+  Serial.print("Connecting to WiFi");
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println();
+  Serial.print("Connected. Open this address in your browser: http://");
+  Serial.println(WiFi.localIP());
+
+  // Start web server
+  server.on("/",    handleRoot);
+  server.on("/data", handleData);
+  server.on("/cmd",  handleCommand);
+  server.begin();
+
+  // Display TX UART
+  ctrlSerial.begin(CONTROLLER_BAUD, SERIAL_8N1, RX_PIN, -1);
+
+  Serial.println("=== Scooter Web Server ready ===");
+}
+
+// ==========================================
+// MAIN LOOP
+// ==========================================
+void loop() {
+  // Handle web requests
+  server.handleClient();
+
+  // Read display TX data
+  while (ctrlSerial.available()) {
+    byte b = ctrlSerial.read();
+    lastByte = millis();
+
+    if (b == 0xA5 && bufIndex == 0) {
+      packetBuf[0] = b;
+      bufIndex = 1;
+    }
+    else if (bufIndex > 0 && bufIndex < 14) {
+      packetBuf[bufIndex++] = b;
+      if (bufIndex == 14) {
+        if (verifyChecksum(packetBuf)) {
+          parsePacket(packetBuf);
+        } else {
+          Serial.println("Bad packet");
+        }
+        bufIndex = 0;
+      }
+    }
+  }
+
+  if (bufIndex > 0 && millis() - lastByte > 500) {
+    bufIndex = 0;
+    smoothedSpeed = 0;
+  }
+}
+Before flashing
+Install ArduinoJson library:
+
+Arduino IDE → Sketch → Include Library → Manage Libraries
+Search ArduinoJson
+Install version 6.x by Benoit Blanchon
+Set your WiFi credentials:
+
+cpp
+const char* ssid     = "YOUR_WIFI_NAME";
+const char* password = "YOUR_WIFI_PASSWORD";
+After flashing
+Open Serial Monitor at 115200. You will see:
+
+Connecting to WiFi....
+Connected. Open this address in your browser: http://192.168.1.xxx
+Type that IP address into your phone browser while on the same WiFi network. The dashboard will open immediately.
+
+Tell me when it is running and what you see.
+
+i thought the esp32s in the scooter and the machine will connect via wifi so that more of the system scooters can be added and the app will manage them all. I want to know how the wifi set ups will be so that fleet management will be posssible
+
+12:26
+You are right — let me clarify the full architecture before we build anything further.
+
+The correct fleet WiFi architecture
+There are two realistic options depending on your deployment area.
+
+Option A — Local WiFi router (small fleet, one location)
+Scooters (ESP32 WiFi)
+       ↓
+  Local WiFi Router
+       ↓
+  Central Server (PC or Raspberry Pi on same network)
+       ↓
+  Fleet App (any browser, any device on same network)
+Each scooter ESP32 connects to the same WiFi router. A central server collects data from all scooters and serves the fleet dashboard. Works well for a small area like a campus, hotel, or resort where all scooters stay within router range.
+
+Limitation — scooters must stay within WiFi range of the router. Maximum 50-100 metres outdoors.
+
+Option B — LoRa + WiFi gateway (large fleet, town-wide)
+Scooters (ESP32 + LoRa)
+       ↓  433MHz LoRa up to 3km
+  Gateway ESP32 (LoRa receiver + WiFi)
+       ↓  WiFi
+  Cloud Server (anywhere in world)
+       ↓  Internet
+  Fleet App (any browser, anywhere)
+This is the system we designed at the very beginning of this conversation. Each scooter transmits over LoRa. One gateway per town receives all scooters and pushes data to a cloud server. The app works from anywhere in the world.
+
+This is the correct architecture for a town-wide scooter fleet.
+
+My recommendation
+Given your goal of managing scooters across a town with a specified radius, Option B is the right choice. WiFi alone will not cover a town.
+
+The build plan going forward
+Layer	Hardware	Status
+Scooter unit	ESP32 WROOM + LoRa RA-02	Firmware ready — need to add LoRa TX
+Gateway	Heltec LoRa32 or ESP32 + RA-02	Not started
+Cloud server	Free tier — Railway or Render	Not started
+Fleet app	Web app, works on any browser	Basic version built
+What needs to happen next in order
+Step 1 — Add LoRa to scooter firmware The scooter ESP32 transmits a LoRa packet every 5 seconds containing all telemetry — battery, speed, mode, brake, light, GPS, scooter ID.
+
+Step 2 — Build the gateway A second ESP32 with LoRa receives packets from all scooters and forwards them to the cloud via WiFi.
+
+Step 3 — Cloud server A simple Node.js server receives data from the gateway and stores the latest state of each scooter.
+
+Step 4 — Fleet app The web dashboard connects to the cloud server and shows all scooters on a map with live telemetry and remote lock controls.
+
+Before we start Step 1
+Two questions:
+
+Q1 — Do you have the LoRa RA-02 module ready to wire to the scooter ESP32?
+
+Q2 — Do you have a second ESP32 or Heltec LoRa32 available for the gateway?
+
+Tell me what hardware you have available and we start building immediately.
+
+i don't have lora now so let's use the first option. later we update to the lora
+
+12:32
+Perfect. Let's build Option A properly so it works for a small fleet now and we simply swap to LoRa later without rewriting everything.
+
+The architecture for Option A
+Scooter 1 ESP32 ──────┐
+Scooter 2 ESP32 ──────┤──→ WiFi Router ──→ Central Server ──→ Fleet App
+Scooter 3 ESP32 ──────┘                    (PC or Pi)          (any browser)
+Each scooter ESP32 connects to WiFi and pushes telemetry to the central server every second. The server tracks all scooters and serves the fleet dashboard. The app shows all scooters with live data and remote controls.
+
+What you need
+Your WiFi router
+A PC or laptop that stays on — this is the central server
+Node.js installed on that PC
+Each scooter ESP32 connected to same WiFi
+Step 1 — Install Node.js on your PC
+Download from nodejs.org and install. After installing open a terminal and confirm:
+
+node --version
+npm --version
+Both should print version numbers. Tell me when that is done.
+
+Step 2 — Each scooter gets a unique ID
+In the scooter firmware we add one line:
+
+cpp
+const char* SCOOTER_ID = "SCO-001";
+Change to SCO-002, SCO-003 for each additional scooter. This is how the server tells them apart.
+
+Step 3 — Scooter firmware sends data to server
+Instead of serving its own web page, each scooter ESP32 now simply pushes its telemetry to the central server every second using an HTTP POST request.
+
+The server address will be the IP of your PC on the local network — something like 192.168.1.100.
+
+Tell me
+What operating system is your PC running?
+
+Windows
+Mac
+Linux
+That determines how we install and run the Node.js server. Tell me and I will write all three pieces — scooter firmware, server code, and fleet app — in one go.
+
+PS C:\Users\LENOVO\PycharmProjects> node --version
+v25.6.1
+PS C:\Users\LENOVO\PycharmProjects> npm --version
+11.9.0
+PS C:\Users\LENOVO\PycharmProjects>
+
+12:37
+Node.js is ready. Windows PC confirmed.
+
+Find your PC local IP address
+Open PowerShell and type:
+
+ipconfig
+Look for IPv4 Address under your WiFi adapter. It will look like:
+
+192.168.1.xxx
+Write that number down — every scooter ESP32 will send data to that address.
+
+Create the project folder
+In PowerShell run these commands one at a time:
+
+cd C:\Users\LENOVO\PycharmProjects
+mkdir scooter-fleet
+cd scooter-fleet
+npm init -y
+npm install express
+Tell me when that is done and I will give you three files to create:
+
+server.js — the central server
+public/index.html — the fleet dashboard app
+Updated ESP32 firmware for each scooter
+All three together in one go once the folder is ready.
+
+PS C:\Users\LENOVO\PycharmProjects> ipconfig
+Windows IP Configuration
+Ethernet adapter Ethernet:
+   Media State . . . . . . . . . . . : Media disconnected
+   Connection-specific DNS Suffix  . : 
+Wireless LAN adapter Local Area Connection* 13:
+   Media State . . . . . . . . . . . : Media disconnected
+   Connection-specific DNS Suffix  . : 
+Wireless LAN adapter Local Area Connection* 14:
+   Media State . . . . . . . . . . . : Media disconnected
+   Connection-specific DNS Suffix  . : 
+Wireless LAN adapter WiFi:
+   Connection-specific DNS Suffix  . : umat.edu.gh
+   Link-local IPv6 Address . . . . . : fe80::5798:4eb4:329d:8aa%20
+   IPv4 Address. . . . . . . . . . . : 10.104.13.197
+   Subnet Mask . . . . . . . . . . . : 255.255.254.0
+   Default Gateway . . . . . . . . . : 10.104.12.1
+Tunnel adapter Teredo Tunneling Pseudo-Interface:
+   Connection-specific DNS Suffix  . :
+   IPv6 Address. . . . . . . . . . . : 2001:0:14c9:d700:1cfc:3d7b:d221:cddf
+   Link-local IPv6 Address . . . . . : fe80::1cfc:3d7b:d221:cddf%15
+   Default Gateway . . . . . . . . . : ::
+PS C:\Users\LENOVO\PycharmProjects>
+
+Show more
+12:38
+Your PC IP address is 10.104.13.197 on the university WiFi network umat.edu.gh.
+
+Important note about university networks
+University networks often block device-to-device communication for security reasons. The ESP32 and your PC may not be able to talk directly even on the same WiFi. We will handle this but let's build first and test.
+
+Run these commands now
+cd C:\Users\LENOVO\PycharmProjects
+mkdir scooter-fleet
+cd scooter-fleet
+npm init -y
+npm install express
+Tell me when npm install express finishes and I will give you all three files at once — server, dashboard app, and updated ESP32 firmware.
+
+PS C:\Users\LENOVO\PycharmProjects> cd scooter-fleet
+PS C:\Users\LENOVO\PycharmProjects\scooter-fleet> npm init -y
+Wrote to C:\Users\LENOVO\PycharmProjects\scooter-fleet\package.json:
+{
+  "name": "scooter-fleet",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
+PS C:\Users\LENOVO\PycharmProjects\scooter-fleet> npm install express
+added 66 packages, and audited 67 packages in 6s
+24 packages are looking for funding
+  run npm fund for details
+found 0 vulnerabilities
+PS C:\Users\LENOVO\PycharmProjects\scooter-fleet>
+
+Show more
+12:40
+Perfect — project is ready. Now I will give you all three files at once.
+
+File 1 — server.js
+Create a file called server.js inside C:\Users\LENOVO\PycharmProjects\scooter-fleet\ and paste this:
+
+javascript
+const express = require('express');
+const app = express();
+const PORT = 3000;
+
+app.use(express.json());
+app.use(express.static('public'));
+
+// ==========================================
+// SCOOTER FLEET STATE
+// Keyed by scooter ID
+// ==========================================
+const fleet = {};
+
+// ==========================================
+// SCOOTER PUSHES TELEMETRY HERE
+// POST /telemetry
+// Body: JSON with all scooter data
+// ==========================================
+app.post('/telemetry', (req, res) => {
+  const data = req.body;
+  if (!data.id) return res.status(400).json({ error: 'Missing scooter ID' });
+
+  fleet[data.id] = {
+    ...data,
+    lastSeen: Date.now()
+  };
+
+  console.log(`[${data.id}] Battery: ${data.battery}% Speed: ${data.speed} mph Mode: ${data.mode}`);
+  res.json({ ok: true });
+});
+
+// ==========================================
+// APP FETCHES ALL SCOOTER DATA HERE
+// GET /fleet
+// Returns all scooters and their state
+// ==========================================
+app.get('/fleet', (req, res) => {
+  // Mark scooters offline if not seen for 5 seconds
+  const now = Date.now();
+  const result = {};
+
+  Object.keys(fleet).forEach(id => {
+    result[id] = {
+      ...fleet[id],
+      online: (now - fleet[id].lastSeen) < 5000
+    };
+  });
+
+  res.json(result);
+});
+
+// ==========================================
+// APP SENDS COMMAND TO SCOOTER HERE
+// POST /command/:id
+// Body: { action: "brakeOn" }
+// ==========================================
+const pendingCommands = {};
+
+app.post('/command/:id', (req, res) => {
+  const id = req.params.id;
+  const action = req.body.action;
+
+  if (!action) return res.status(400).json({ error: 'Missing action' });
+
+  // Queue command for that scooter
+  if (!pendingCommands[id]) pendingCommands[id] = [];
+  pendingCommands[id].push(action);
+
+  console.log(`[CMD] ${id} → ${action}`);
+  res.json({ ok: true });
+});
+
+// ==========================================
+// SCOOTER POLLS FOR PENDING COMMANDS
+// GET /commands/:id
+// Returns and clears any pending commands
+// ==========================================
+app.get('/commands/:id', (req, res) => {
+  const id = req.params.id;
+  const cmds = pendingCommands[id] || [];
+  pendingCommands[id] = []; // clear after sending
+  res.json({ commands: cmds });
+});
+
+// ==========================================
+// START SERVER
+// ==========================================
+app.listen(PORT, '0.0.0.0', () => {
+  console.log('=============================');
+  console.log('Scooter Fleet Server running');
+  console.log(`Open in browser: http://10.104.13.197:${PORT}`);
+  console.log('=============================');
+});
+File 2 — public/index.html
+Create a folder called public inside scooter-fleet. Then create index.html inside that folder and paste this:
+
+html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scooter Fleet</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0f0f0f;
+    color: #ffffff;
+    min-height: 100vh;
+    padding: 16px;
+  }
+  h1 {
+    text-align: center;
+    font-size: 16px;
+    font-weight: 500;
+    color: #888888;
+    margin-bottom: 20px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .fleet-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+  }
+  .scooter-card {
+    background: #1a1a1a;
+    border-radius: 20px;
+    padding: 20px;
+    border: 1px solid #2a2a2a;
+  }
+  .scooter-card.offline {
+    opacity: 0.5;
+    border-color: #ff444433;
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .scooter-id {
+    font-size: 18px;
+    font-weight: 600;
+  }
+  .status-badge {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+  .status-badge.online {
+    background: #44ff8822;
+    color: #44ff88;
+  }
+  .status-badge.offline {
+    background: #ff444422;
+    color: #ff4444;
+  }
+  .telemetry-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .tel-item {
+    background: #111111;
+    border-radius: 12px;
+    padding: 12px 8px;
+    text-align: center;
+  }
+  .tel-label {
+    font-size: 10px;
+    color: #555555;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+  .tel-value {
+    font-size: 20px;
+    font-weight: 600;
+  }
+  .tel-unit {
+    font-size: 10px;
+    color: #444444;
+    margin-top: 2px;
+  }
+  .green  { color: #44ff88; }
+  .yellow { color: #ffcc00; }
+  .red    { color: #ff4444; }
+  .blue   { color: #44aaff; }
+  .white  { color: #ffffff; }
+
+  .battery-bar {
+    width: 100%;
+    height: 6px;
+    background: #2a2a2a;
+    border-radius: 3px;
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .battery-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s ease;
+  }
+
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .btn {
+    background: #111111;
+    border: 1px solid #2a2a2a;
+    border-radius: 12px;
+    padding: 12px 8px;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn:active { transform: scale(0.96); }
+  .btn.full { grid-column: span 2; }
+  .btn.danger  { border-color: #ff444466; color: #ff4444; }
+  .btn.success { border-color: #44ff8866; color: #44ff88; }
+  .btn.blue    { border-color: #44aaff66; color: #44aaff; }
+  .btn.yellow  { border-color: #ffcc0066; color: #ffcc00; }
+  .btn-icon { font-size: 16px; margin-bottom: 4px; }
+
+  .last-seen {
+    text-align: center;
+    font-size: 10px;
+    color: #333333;
+    margin-top: 12px;
+  }
+  .no-scooters {
+    text-align: center;
+    color: #333333;
+    font-size: 14px;
+    margin-top: 60px;
+  }
+</style>
+</head>
+<body>
+
+<h1>⚡ Scooter Fleet</h1>
+<div class="fleet-grid" id="fleet"></div>
+
+<script>
+  const SERVER = '';  // empty = same host
+
+  function batteryColor(pct) {
+    if (pct > 50) return '#44ff88';
+    if (pct > 20) return '#ffcc00';
+    return '#ff4444';
+  }
+
+  function batteryClass(pct) {
+    if (pct > 50) return 'green';
+    if (pct > 20) return 'yellow';
+    return 'red';
+  }
+
+  function timeSince(ts) {
+    const sec = Math.floor((Date.now() - ts) / 1000);
+    if (sec < 5)  return 'just now';
+    if (sec < 60) return sec + 's ago';
+    return Math.floor(sec / 60) + 'm ago';
+  }
+
+  function sendCommand(id, action) {
+    fetch(SERVER + '/command/' + id, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action })
+    }).catch(e => console.log(e));
+  }
+
+  function renderScooter(id, d) {
+    const bpct = d.battery || 0;
+    const online = d.online;
+
+    return `
+    <div class="scooter-card ${online ? '' : 'offline'}">
+      <div class="card-header">
+        <div class="scooter-id">${id}</div>
+        <div class="status-badge ${online ? 'online' : 'offline'}">
+          ${online ? 'Online' : 'Offline'}
+        </div>
+      </div>
+
+      <div class="telemetry-grid">
+        <div class="tel-item">
+          <div class="tel-label">Speed</div>
+          <div class="tel-value white">${(d.speed || 0).toFixed(1)}</div>
+          <div class="tel-unit">mph</div>
+        </div>
+        <div class="tel-item">
+          <div class="tel-label">Battery</div>
+          <div class="tel-value ${batteryClass(bpct)}">${bpct.toFixed(0)}</div>
+          <div class="tel-unit">%</div>
+        </div>
+        <div class="tel-item">
+          <div class="tel-label">Mode</div>
+          <div class="tel-value yellow">${d.mode || '--'}</div>
+          <div class="tel-unit">mode</div>
+        </div>
+        <div class="tel-item">
+          <div class="tel-label">Voltage</div>
+          <div class="tel-value blue">${(d.voltage || 0).toFixed(1)}</div>
+          <div class="tel-unit">V</div>
+        </div>
+        <div class="tel-item">
+          <div class="tel-label">Brake</div>
+          <div class="tel-value ${d.brake ? 'red' : 'green'}">${d.brake ? 'ON' : 'OFF'}</div>
+          <div class="tel-unit">state</div>
+        </div>
+        <div class="tel-item">
+          <div class="tel-label">Light</div>
+          <div class="tel-value ${d.light ? 'yellow' : 'white'}">${d.light ? 'ON' : 'OFF'}</div>
+          <div class="tel-unit">light</div>
+        </div>
+      </div>
+
+      <div class="battery-bar">
+        <div class="battery-fill" style="width:${bpct}%; background:${batteryColor(bpct)}"></div>
+      </div>
+
+      <div class="controls">
+        <button class="btn danger full" onclick="sendCommand('${id}','brakeOn')">
+          <div class="btn-icon">🔒</div>Lock / Brake ON
+        </button>
+        <button class="btn success full" onclick="sendCommand('${id}','brakeOff')">
+          <div class="btn-icon">🔓</div>Unlock / Brake OFF
+        </button>
+        <button class="btn yellow" onclick="sendCommand('${id}','mode')">
+          <div class="btn-icon">⚡</div>Cycle Mode
+        </button>
+        <button class="btn blue" onclick="sendCommand('${id}','light')">
+          <div class="btn-icon">💡</div>Toggle Light
+        </button>
+        <button class="btn" onclick="sendCommand('${id}','walk')">
+          <div class="btn-icon">🚶</div>Walk Mode
+        </button>
+        <button class="btn danger" onclick="sendCommand('${id}','power')">
+          <div class="btn-icon">⏻</div>Power ON/OFF
+        </button>
+      </div>
+
+      <div class="last-seen">Last seen: ${timeSince(d.lastSeen)}</div>
+    </div>`;
+  }
+
+  function fetchFleet() {
+    fetch(SERVER + '/fleet')
+      .then(r => r.json())
+      .then(fleet => {
+        const container = document.getElementById('fleet');
+        const ids = Object.keys(fleet);
+
+        if (ids.length === 0) {
+          container.innerHTML = '<div class="no-scooters">No scooters connected yet</div>';
+          return;
+        }
+
+        container.innerHTML = ids
+          .map(id => renderScooter(id, fleet[id]))
+          .join('');
+      })
+      .catch(() => {
+        document.getElementById('fleet').innerHTML =
+          '<div class="no-scooters">Cannot reach server</div>';
+      });
+  }
+
+  setInterval(fetchFleet, 1000);
+  fetchFleet();
+</script>
+</body>
+</html>
+File 3 — Updated ESP32 firmware
+Replace YOUR_WIFI_NAME, YOUR_WIFI_PASSWORD, and YOUR_PC_IP before flashing:
+
+cpp
+#include <HardwareSerial.h>
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+
+// ==========================================
+// PIN DEFINITIONS — ESP32 WROOM
+// ==========================================
+#define RX_PIN          16
+#define CONTROLLER_BAUD 9600
+#define SW_PIN          15
+#define OPTO_PIN        26
+
+// ==========================================
+// WIFI + SERVER CONFIG
+// ==========================================
+const char* ssid       = "YOUR_WIFI_NAME";
+const char* password   = "YOUR_WIFI_PASSWORD";
+const char* serverIP   = "10.104.13.197";
+const int   serverPort = 3000;
+const char* SCOOTER_ID = "SCO-001";
+
+HardwareSerial ctrlSerial(1);
+float smoothedSpeed = 0;
+
+// ==========================================
+// SCOOTER DATA STRUCTURE
+// ==========================================
+struct ScooterData {
+  float   battery;
+  float   voltage;
+  float   speedMph;
+  bool    brakeActive;
+  bool    isMoving;
+  bool    lightOn;
+  bool    diagMode;
+  String  mode;
+  bool    valid;
+};
+
+ScooterData scooter;
+
+// ==========================================
+// SPEED CALCULATION
+// ==========================================
+float calculateSpeed(byte b3, byte modeByte, byte diagByte) {
+  float maxMph = 16.0;
+  if (diagByte == 0x06)      maxMph = 4.0;
+  else if (modeByte == 0x00) maxMph = 9.0;
+  else if (modeByte == 0x10) maxMph = 12.0;
+  else if (modeByte == 0x20) maxMph = 16.0;
+
+  float x = (float)b3 / 16.0;
+  float curve = pow(x, 0.55);
+  float mph = constrain(curve * maxMph, 0, maxMph);
+  mph = round(mph);
+  smoothedSpeed = (smoothedSpeed * 0.3) + (mph * 0.7);
+  return smoothedSpeed;
+}
+
+// ==========================================
+// PACKET PARSER
+// ==========================================
+float parseVoltage(byte raw) { return (raw * 0.1) + 20.0; }
+
+float parseBattery(byte raw) {
+  float v = parseVoltage(raw);
+  return constrain(((v - 32.0) / 10.0) * 100.0, 0, 100);
+}
+
+String parseMode(byte b8, byte b10) {
+  if (b10 == 0x06) return "DIAG";
+  switch (b8) {
+    case 0x00: return "ECO";
+    case 0x10: return "D";
+    case 0x20: return "S";
+    default:   return "UNKNOWN";
+  }
+}
+
+bool verifyChecksum(byte* pkt) {
+  byte sum = 0;
+  for (int i = 1; i <= 12; i++) sum += pkt[i];
+  return (sum == pkt[13]);
+}
+
+void parsePacket(byte* pkt) {
+  scooter.battery     = parseBattery(pkt[1]);
+  scooter.voltage     = parseVoltage(pkt[1]);
+  scooter.speedMph    = calculateSpeed(pkt[3], pkt[8], pkt[10]);
+  scooter.isMoving    = (pkt[3] > 0);
+  scooter.lightOn     = (pkt[5] & 0x40) != 0;
+  scooter.brakeActive = (pkt[6] == 0xFF);
+  scooter.mode        = parseMode(pkt[8], pkt[10]);
+  scooter.diagMode    = (pkt[10] == 0x06);
+  scooter.valid       = true;
+}
+
+// ==========================================
+// SW CONTROL
+// ==========================================
+void sw_pulse(int duration) {
+  pinMode(SW_PIN, OUTPUT);
+  digitalWrite(SW_PIN, HIGH);
+  delay(duration);
+  digitalWrite(SW_PIN, LOW);
+  pinMode(SW_PIN, INPUT);
+}
+
+void sw_powerToggle() {
+  pinMode(SW_PIN, OUTPUT);
+  digitalWrite(SW_PIN, HIGH);
+  delay(3000);
+  digitalWrite(SW_PIN, LOW);
+  pinMode(SW_PIN, INPUT);
+}
+
+void sw_cycleMode()   { sw_pulse(100); }
+void sw_toggleLight() { sw_pulse(100); delay(100); sw_pulse(100); }
+void sw_walkMode()    { sw_pulse(500); delay(100); sw_pulse(100); }
+
+// ==========================================
+// BRAKE CONTROL
+// ==========================================
+void brakeOn()  { digitalWrite(OPTO_PIN, HIGH); }
+void brakeOff() { digitalWrite(OPTO_PIN, LOW);  }
+
+// ==========================================
+// EXECUTE COMMAND FROM SERVER
+// ==========================================
+void executeCommand(String action) {
+  Serial.print("[CMD] ");
+  Serial.println(action);
+  if      (action == "power")    sw_powerToggle();
+  else if (action == "mode")     sw_cycleMode();
+  else if (action == "light")    sw_toggleLight();
+  else if (action == "walk")     sw_walkMode();
+  else if (action == "brakeOn")  brakeOn();
+  else if (action == "brakeOff") brakeOff();
+}
+
+// ==========================================
+// PUSH TELEMETRY TO SERVER
+// ==========================================
+unsigned long lastPush = 0;
+
+void pushTelemetry() {
+  if (WiFi.status() != WL_CONNECTED) return;
+  if (millis() - lastPush < 1000) return;
+  lastPush = millis();
+
+  HTTPClient http;
+  String url = "http://" + String(serverIP) + ":" + serverPort + "/telemetry";
+  http.begin(url);
+  http.addHeader("Content-Type", "application/json");
+
+  StaticJsonDocument<256> doc;
+  doc["id"]      = SCOOTER_ID;
+  doc["battery"] = scooter.battery;
+  doc["voltage"] = scooter.voltage;
+  doc["speed"]   = scooter.speedMph;
+  doc["moving"]  = scooter.isMoving;
+  doc["mode"]    = scooter.mode;
+  doc["brake"]   = scooter.brakeActive;
+  doc["light"]   = scooter.lightOn;
+  doc["diag"]    = scooter.diagMode;
+
+  String body;
+  serializeJson(doc, body);
+
+  int code = http.POST(body);
+  http.end();
+
+  if (code != 200) {
+    Serial.print("Push failed: ");
+    Serial.println(code);
+  }
+}
+
+// ==========================================
+// POLL COMMANDS FROM SERVER
+// ==========================================
+unsigned long lastPoll = 0;
+
+void pollCommands() {
+  if (WiFi.status() != WL_CONNECTED) return;
+  if (millis() - lastPoll < 1000) return;
+  lastPoll = millis();
+
+  HTTPClient http;
+  String url = "http://" + String(serverIP) + ":" + serverPort + "/commands/" + SCOOTER_ID;
+  http.begin(url);
+
+  int code = http.GET();
+  if (code == 200) {
+    String payload = http.getString();
+    StaticJsonDocument<256> doc;
+    deserializeJson(doc, payload);
+    JsonArray cmds = doc["commands"];
+    for (String cmd : cmds) {
+      executeCommand(cmd);
+    }
+  }
+  http.end();
+}
+
+// ==========================================
+// PACKET BUFFER
+// ==========================================
+byte packetBuf[14];
+int  bufIndex  = 0;
+unsigned long lastByte = 0;
+
+// ==========================================
+// SETUP
+// ==========================================
+void setup() {
+  Serial.begin(115200);
+  delay(1500);
+
+  pinMode(OPTO_PIN, OUTPUT);
+  digitalWrite(OPTO_PIN, LOW);
+  pinMode(SW_PIN, INPUT);
+
+  // Connect WiFi
+  Serial.print("Connecting to WiFi");
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println();
+  Serial.print("WiFi connected. IP: ");
+  Serial.println(WiFi.localIP());
+  Serial.print("Pushing to server: http://");
+  Serial.print(serverIP);
+  Serial.print(":");
+  Serial.println(serverPort);
+
+  ctrlSerial.begin(CONTROLLER_BAUD, SERIAL_8N1, RX_PIN, -1);
+  Serial.println("=== Scooter SCO-001 ready ===");
+}
+
+// ==========================================
+// MAIN LOOP
+// ==========================================
+void loop() {
+  // Read display TX
+  while (ctrlSerial.available()) {
+    byte b = ctrlSerial.read();
+    lastByte = millis();
+
+    if (b == 0xA5 && bufIndex == 0) {
+      packetBuf[0] = b;
+      bufIndex = 1;
+    }
+    else if (bufIndex > 0 && bufIndex < 14) {
+      packetBuf[bufIndex++] = b;
+      if (bufIndex == 14) {
+        if (verifyChecksum(packetBuf)) {
+          parsePacket(packetBuf);
+        } else {
+          Serial.println("Bad packet");
+        }
+        bufIndex = 0;
+      }
+    }
+  }
+
+  if (bufIndex > 0 && millis() - lastByte > 500) {
+    bufIndex = 0;
+    smoothedSpeed = 0;
+  }
+
+  // Push telemetry and poll commands
+  pushTelemetry();
+  pollCommands();
+}
+Start the server
+In PowerShell inside the scooter-fleet folder:
+
+node server.js
+You should see:
+
+=============================
+Scooter Fleet Server running
+Open in browser: http://10.104.13.197:3000
+=============================
+Open that address in your browser. Then flash the ESP32 firmware with your WiFi credentials filled in.
+
+Tell me what happens on both the server terminal and the browser.
+

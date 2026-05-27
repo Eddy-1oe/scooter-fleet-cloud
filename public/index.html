@@ -69,7 +69,16 @@
   }
   .tel-item {
     text-align: center;
+    padding: 8px;
+    border-radius: 8px;
+    transition: background 0.3s ease;
   }
+  .tel-item.bg-green  { background: #44ff8822; }
+  .tel-item.bg-yellow { background: #ffcc0022; }
+  .tel-item.bg-red    { background: #ff444422; }
+  .tel-item.bg-blue   { background: #44aaff22; }
+  .tel-item.bg-white  { background: #ffffff11; }
+  .tel-item.bg-gray   { background: #333333; }
   .tel-label {
     font-size: 10px;
     color: #666666;
@@ -209,12 +218,17 @@
           <div class="tel-value blue">${(d.voltage || 0).toFixed(1)}</div>
           <div class="tel-unit">V</div>
         </div>
-        <div class="tel-item">
+        <div class="tel-item ${d.power ? 'bg-green' : 'bg-gray'}">
+          <div class="tel-label">Power</div>
+          <div class="tel-value ${d.power ? 'green' : 'red'}">${d.power ? 'ON' : 'OFF'}</div>
+          <div class="tel-unit">state</div>
+        </div>
+        <div class="tel-item ${d.brake ? 'bg-red' : 'bg-green'}">
           <div class="tel-label">Brake</div>
           <div class="tel-value ${d.brake ? 'red' : 'green'}">${d.brake ? 'ON' : 'OFF'}</div>
           <div class="tel-unit">state</div>
         </div>
-        <div class="tel-item">
+        <div class="tel-item ${d.light ? 'bg-yellow' : 'bg-white'}">
           <div class="tel-label">Light</div>
           <div class="tel-value ${d.light ? 'yellow' : 'white'}">${d.light ? 'ON' : 'OFF'}</div>
           <div class="tel-unit">light</div>

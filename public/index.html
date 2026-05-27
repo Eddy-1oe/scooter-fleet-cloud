@@ -142,6 +142,57 @@
     font-size: 14px;
     margin-top: 60px;
   }
+  .history-section {
+    margin-top: 16px;
+    border-top: 1px solid #2a2a2a;
+    padding-top: 12px;
+  }
+  .history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .history-title {
+    font-size: 11px;
+    color: #666666;
+    text-transform: uppercase;
+  }
+  .history-toggle {
+    background: none;
+    border: none;
+    color: #44aaff;
+    font-size: 10px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+  .history-toggle:hover {
+    background: #44aaff22;
+  }
+  .history-list {
+    max-height: 150px;
+    overflow-y: auto;
+    font-size: 10px;
+  }
+  .history-item {
+    display: grid;
+    grid-template-columns: 60px 1fr 1fr 1fr;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    margin-bottom: 4px;
+    background: #1a1a1a;
+  }
+  .history-item:hover {
+    background: #222222;
+  }
+  .history-time {
+    color: #666666;
+  }
+  .history-value {
+    color: #888888;
+  }
 </style>
 </head>
 <body>
@@ -177,6 +228,55 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action })
     }).catch(e => console.log(e));
+  }
+
+  function toggleHistory(id) {
+    const historyDiv = document.getElementById('history-' + id);
+    const button = event.target;
+
+    if (historyDiv.style.display === 'none') {
+      historyDiv.style.display = 'block';
+      button.textContent = 'Hide';
+      fetchHistory(id);
+    } else {
+      historyDiv.style.display = 'none';
+      button.textContent = 'Show';
+    }
+  }
+
+  function fetchHistory(id) {
+    fetch(SERVER + '/history/' + id)
+      .then(r => r.json())
+      .then(data => {
+        const historyDiv = document.getElementById('history-' + id);
+        const history = data.history || [];
+
+        // Keep the header row
+        let html = `
+          <div class="history-item">
+            <div class="history-time">Time</div>
+            <div class="history-value">Battery</div>
+            <div class="history-value">Speed</div>
+            <div class="history-value">Mode</div>
+          </div>
+        `;
+
+        // Add history entries (most recent first)
+        history.slice().reverse().forEach(entry => {
+          const time = new Date(entry.timestamp).toLocaleTimeString();
+          html += `
+            <div class="history-item">
+              <div class="history-time">${time}</div>
+              <div class="history-value">${entry.battery || 0}%</div>
+              <div class="history-value">${(entry.speed || 0).toFixed(1)} mph</div>
+              <div class="history-value">${entry.mode || '--'}</div>
+            </div>
+          `;
+        });
+
+        historyDiv.innerHTML = html;
+      })
+      .catch(e => console.log(e));
   }
 
   function renderScooter(id, d) {
@@ -256,6 +356,21 @@
       </div>
 
       <div class="last-seen">Last seen: ${timeSince(d.lastSeen)}</div>
+
+      <div class="history-section">
+        <div class="history-header">
+          <div class="history-title">History</div>
+          <button class="history-toggle" onclick="toggleHistory('${id}')">Show</button>
+        </div>
+        <div class="history-list" id="history-${id}" style="display: none;">
+          <div class="history-item">
+            <div class="history-time">Time</div>
+            <div class="history-value">Battery</div>
+            <div class="history-value">Speed</div>
+            <div class="history-value">Mode</div>
+          </div>
+        </div>
+      </div>
     </div>`;
   }
 

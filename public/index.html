@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ScooterFleet ÔÇö Operations Console</title>
+<title>ScooterFleet â€” Operations Console</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
@@ -63,13 +63,13 @@
 
 html,body{height:100%;background:var(--navy);color:var(--text-primary);font-family:var(--font);font-size:14px;line-height:1.5}
 
-/* ÔöÇÔöÇ Layout ÔöÇÔöÇ */
+/* â”€â”€ Layout â”€â”€ */
 .shell{display:grid;grid-template-columns:220px 1fr;grid-template-rows:auto 1fr;min-height:100vh}
 .topbar{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;background:var(--navy-2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
 .sidebar{background:var(--navy-2);border-right:1px solid var(--border);padding:16px 0;display:flex;flex-direction:column;gap:2px}
 .main{background:var(--navy);padding:28px 32px;overflow-y:auto;min-height:0}
 
-/* ÔöÇÔöÇ Topbar ÔöÇÔöÇ */
+/* â”€â”€ Topbar â”€â”€ */
 .brand{display:flex;align-items:center;gap:10px}
 .brand-mark{width:30px;height:30px;border-radius:8px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px}
 .brand-name{font-size:15px;font-weight:600;letter-spacing:-.2px}
@@ -80,7 +80,7 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
 .conn-dot.live{background:var(--green)}
 .conn-dot.err{background:var(--red)}
 
-/* ÔöÇÔöÇ Sidebar nav ÔöÇÔöÇ */
+/* â”€â”€ Sidebar nav â”€â”€ */
 .nav-section{padding:0 12px;margin-bottom:4px}
 .nav-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary);padding:10px 10px 6px}
 .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius);cursor:pointer;font-size:13px;font-weight:500;color:var(--text-secondary);transition:all .15s;border:1px solid transparent;position:relative}
@@ -92,13 +92,13 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
 .sidebar-footer{margin-top:auto;padding:16px 12px;border-top:1px solid var(--border)}
 .server-addr{font-size:10px;font-family:var(--mono);color:var(--text-tertiary);padding:6px 8px;background:var(--navy-3);border-radius:6px;word-break:break-all}
 
-/* ÔöÇÔöÇ Page header ÔöÇÔöÇ */
+/* â”€â”€ Page header â”€â”€ */
 .page-hd{margin-bottom:24px;display:flex;align-items:flex-end;justify-content:space-between}
 .page-title{font-size:22px;font-weight:600;letter-spacing:-.4px}
 .page-sub{font-size:13px;color:var(--text-secondary);margin-top:2px}
 .page-actions{display:flex;gap:8px}
 
-/* ÔöÇÔöÇ Stat cards ÔöÇÔöÇ */
+/* â”€â”€ Stat cards â”€â”€ */
 .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
 .stat{background:var(--navy-2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px 20px;position:relative;overflow:hidden}
 .stat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent-color,var(--border))}
@@ -110,7 +110,7 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
 .stat-val{font-size:32px;font-weight:600;letter-spacing:-.5px;line-height:1}
 .stat-sub{font-size:12px;color:var(--text-secondary);margin-top:6px}
 
-/* ÔöÇÔöÇ Buttons ÔöÇÔöÇ */
+/* â”€â”€ Buttons â”€â”€ */
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius);font-size:13px;font-weight:500;font-family:var(--font);cursor:pointer;transition:all .15s;border:1px solid transparent}
 .btn:active{transform:scale(.97)}
 .btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
@@ -127,14 +127,14 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
 .btn-info:hover{background:rgba(96,165,250,.18)}
 .btn i{font-size:14px}
 
-/* ÔöÇÔöÇ Section card ÔöÇÔöÇ */
+/* â”€â”€ Section card â”€â”€ */
 .card{background:var(--navy-2);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:20px}
 .card-hd{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)}
 .card-title{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
 .card-title i{font-size:16px;color:var(--accent)}
 .card-body{padding:20px}
 
-/* ÔöÇÔöÇ Broadcast ÔöÇÔöÇ */
+/* â”€â”€ Broadcast â”€â”€ */
 .bc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .bc-action{background:var(--navy-3);border:1px solid var(--border-light);border-radius:var(--radius);padding:16px 18px;cursor:pointer;transition:all .15s;font-family:var(--font);text-align:left;display:flex;flex-direction:column;gap:6px}
 .bc-action:hover{border-color:var(--border);background:var(--navy-4)}
@@ -151,7 +151,7 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
 .bc-name{font-size:13px;font-weight:600;color:var(--text-primary)}
 .bc-desc{font-size:11px;color:var(--text-secondary)}
 
-/* ÔöÇÔöÇ Filter / sort ÔöÇÔöÇ */
+/* â”€â”€ Filter / sort â”€â”€ */
 .filter-row{display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap}
 .filter-pill{font-size:12px;font-weight:500;padding:5px 14px;border-radius:20px;border:1px solid var(--border-light);background:transparent;color:var(--text-secondary);cursor:pointer;font-family:var(--font);transition:all .12s}
 .filter-pill:hover{border-color:var(--border);color:var(--text-primary)}
@@ -159,10 +159,10 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
 .sort-sel{font-size:12px;font-weight:500;padding:5px 12px;border-radius:20px;border:1px solid var(--border-light);background:var(--navy-2);color:var(--text-secondary);cursor:pointer;font-family:var(--font);outline:none;margin-left:auto}
 .sort-sel:focus{border-color:var(--accent)}
 
-/* ÔöÇÔöÇ Fleet grid ÔöÇÔöÇ */
+/* â”€â”€ Fleet grid â”€â”€ */
 .fleet-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
 
-/* ÔöÇÔöÇ Scooter card ÔöÇÔöÇ */
+/* â”€â”€ Scooter card â”€â”€ */
 .scard{background:var(--navy-2);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;transition:border-color .2s,box-shadow .2s}
 .scard:hover{border-color:var(--border-light);box-shadow:0 4px 24px rgba(0,0,0,.3)}
 .scard.offline{opacity:.55}
@@ -227,7 +227,7 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
 .ctrl-btn i{font-size:13px}
 .lastseen{text-align:center;font-size:10px;color:var(--text-tertiary);padding:0 14px 10px;font-family:var(--mono)}
 
-/* ÔöÇÔöÇ Alerts ÔöÇÔöÇ */
+/* â”€â”€ Alerts â”€â”€ */
 .alert-item{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
 .alert-item:last-child{border-bottom:none}
 .alert-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:4px}
@@ -243,26 +243,26 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
 .alert-type-badge.info{background:rgba(59,130,246,.12);color:var(--blue-muted)}
 .alerts-empty{text-align:center;padding:32px;color:var(--text-tertiary);font-size:13px}
 
-/* ÔöÇÔöÇ Chart ÔöÇÔöÇ */
+/* â”€â”€ Chart â”€â”€ */
 .chart-wrap{position:relative;width:100%;height:160px}
 
-/* ÔöÇÔöÇ No results ÔöÇÔöÇ */
+/* â”€â”€ No results â”€â”€ */
 .no-results{grid-column:1/-1;text-align:center;padding:48px 24px;color:var(--text-tertiary)}
 .no-results i{font-size:36px;display:block;margin-bottom:10px;opacity:.4}
 .no-results p{font-size:13px}
 
-/* ÔöÇÔöÇ Flash ÔöÇÔöÇ */
+/* â”€â”€ Flash â”€â”€ */
 .cmd-flash{animation:flash .4s ease}
 @keyframes flash{0%{opacity:.35}100%{opacity:1}}
 .alert-in{animation:aIn .25s ease}
 @keyframes aIn{0%{opacity:0;transform:translateY(-5px)}100%{opacity:1;transform:translateY(0)}}
 
-/* ÔöÇÔöÇ Page transitions ÔöÇÔöÇ */
+/* â”€â”€ Page transitions â”€â”€ */
 .page{display:none}
 .page.active{display:block;animation:pageIn .2s ease}
 @keyframes pageIn{0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
 
-/* ÔöÇÔöÇ Login Page ÔöÇÔöÇ */
+/* â”€â”€ Login Page â”€â”€ */
 .login-page{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--navy);display:flex;align-items:center;justify-content:center;z-index:1000}
 .login-card{background:var(--navy-2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:40px;width:400px;max-width:90%}
 .login-logo{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:32px}
@@ -313,7 +313,7 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
     <div class="topbar-right">
       <div class="conn-pill">
         <span class="conn-dot" id="conn-dot"></span>
-        <span id="conn-status">connectingÔÇª</span>
+        <span id="conn-status">connectingâ€¦</span>
         <span style="color:var(--text-tertiary);margin-left:4px" id="conn-addr">10.104.13.197:3000</span>
       </div>
       <button id="auth-btn" class="btn btn-ghost" onclick="handleAppLogout()" style="margin-left:12px;padding:6px 12px;font-size:12px">
@@ -369,7 +369,7 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
   <!-- Main content -->
   <main class="main">
 
-    <!-- ÔöÇÔöÇ PAGE: Fleet overview ÔöÇÔöÇ -->
+    <!-- â”€â”€ PAGE: Fleet overview â”€â”€ -->
     <div class="page active" id="page-fleet">
       <div class="page-hd">
         <div>
@@ -379,9 +379,9 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
         <div class="page-actions">
           <select class="sort-sel" id="sort-select" onchange="setSortAndRender()" aria-label="Sort scooters">
             <option value="id">Sort: ID</option>
-            <option value="battery_asc">Battery Ôåæ</option>
-            <option value="battery_desc">Battery Ôåô</option>
-            <option value="speed_desc">Speed Ôåô</option>
+            <option value="battery_asc">Battery â†‘</option>
+            <option value="battery_desc">Battery â†“</option>
+            <option value="speed_desc">Speed â†“</option>
             <option value="status">Status</option>
           </select>
         </div>
@@ -390,22 +390,22 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
       <div class="stat-row">
         <div class="stat blue">
           <div class="stat-label"><i class="ti ti-device-mobile" style="font-size:13px"></i> Total</div>
-          <div class="stat-val" id="sum-total">ÔÇö</div>
+          <div class="stat-val" id="sum-total">â€”</div>
           <div class="stat-sub">scooters in fleet</div>
         </div>
         <div class="stat green">
           <div class="stat-label"><i class="ti ti-wifi" style="font-size:13px"></i> Online</div>
-          <div class="stat-val" id="sum-online" style="color:var(--green)">ÔÇö</div>
+          <div class="stat-val" id="sum-online" style="color:var(--green)">â€”</div>
           <div class="stat-sub">connected now</div>
         </div>
         <div class="stat amber">
           <div class="stat-label"><i class="ti ti-battery-2" style="font-size:13px"></i> Avg battery</div>
-          <div class="stat-val" id="sum-batt">ÔÇö</div>
+          <div class="stat-val" id="sum-batt">â€”</div>
           <div class="stat-sub">fleet average</div>
         </div>
         <div class="stat red">
           <div class="stat-label"><i class="ti ti-lock" style="font-size:13px"></i> Locked</div>
-          <div class="stat-val" id="sum-locked">ÔÇö</div>
+          <div class="stat-val" id="sum-locked">â€”</div>
           <div class="stat-sub">brake active</div>
         </div>
       </div>
@@ -423,7 +423,7 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
       <div class="fleet-grid" id="fleet-grid"></div>
     </div>
 
-    <!-- ÔöÇÔöÇ PAGE: Broadcast ÔöÇÔöÇ -->
+    <!-- â”€â”€ PAGE: Broadcast â”€â”€ -->
     <div class="page" id="page-broadcast">
       <div class="page-hd">
         <div>
@@ -461,7 +461,7 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
             <button class="bc-action amber" onclick="broadcastCmd('mode')">
               <i class="ti ti-bolt bc-icon amber" aria-hidden="true"></i>
               <span class="bc-name">Cycle mode ALL</span>
-              <span class="bc-desc">Advance ECO ÔåÆ D ÔåÆ S on all units</span>
+              <span class="bc-desc">Advance ECO â†’ D â†’ S on all units</span>
             </button>
             <button class="bc-action blue" onclick="broadcastCmd('light')">
               <i class="ti ti-bulb bc-icon blue" aria-hidden="true"></i>
@@ -482,7 +482,7 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
       </div>
     </div>
 
-    <!-- ÔöÇÔöÇ PAGE: Alerts ÔöÇÔöÇ -->
+    <!-- â”€â”€ PAGE: Alerts â”€â”€ -->
     <div class="page" id="page-alerts">
       <div class="page-hd">
         <div>
@@ -500,12 +500,12 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
           <span id="alert-count-badge" style="font-size:11px;font-weight:600;color:var(--text-secondary)">0 events</span>
         </div>
         <div style="padding:0 20px">
-          <div id="alert-list"><div class="alerts-empty">No alerts ÔÇö all systems normal</div></div>
+          <div id="alert-list"><div class="alerts-empty">No alerts â€” all systems normal</div></div>
         </div>
       </div>
     </div>
 
-    <!-- ÔöÇÔöÇ PAGE: Battery ÔöÇÔöÇ -->
+    <!-- â”€â”€ PAGE: Battery â”€â”€ -->
     <div class="page" id="page-battery">
       <div class="page-hd">
         <div>
@@ -517,17 +517,17 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
       <div class="stat-row" style="grid-template-columns:repeat(3,1fr)">
         <div class="stat green">
           <div class="stat-label"><i class="ti ti-battery-4" style="font-size:13px"></i> Healthy</div>
-          <div class="stat-val" id="batt-hi-count" style="color:var(--green)">ÔÇö</div>
+          <div class="stat-val" id="batt-hi-count" style="color:var(--green)">â€”</div>
           <div class="stat-sub">above 50%</div>
         </div>
         <div class="stat amber">
           <div class="stat-label"><i class="ti ti-battery-2" style="font-size:13px"></i> Low</div>
-          <div class="stat-val" id="batt-mid-count" style="color:var(--amber)">ÔÇö</div>
-          <div class="stat-sub">21 ÔÇô 50%</div>
+          <div class="stat-val" id="batt-mid-count" style="color:var(--amber)">â€”</div>
+          <div class="stat-sub">21 â€“ 50%</div>
         </div>
         <div class="stat red">
           <div class="stat-label"><i class="ti ti-battery-1" style="font-size:13px"></i> Critical</div>
-          <div class="stat-val" id="batt-lo-count" style="color:var(--red)">ÔÇö</div>
+          <div class="stat-val" id="batt-lo-count" style="color:var(--red)">â€”</div>
           <div class="stat-sub">20% or below</div>
         </div>
       </div>
@@ -552,7 +552,7 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
       </div>
     </div>
 
-    <!-- ÔöÇÔöÇ PAGE: History & Analytics ÔöÇÔöÇ -->
+    <!-- â”€â”€ PAGE: History & Analytics â”€â”€ -->
     <div class="page" id="page-analytics">
       <div class="page-hd">
         <div>
@@ -564,22 +564,22 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
       <div class="stat-row" style="grid-template-columns:repeat(4,1fr)">
         <div class="stat blue">
           <div class="stat-label"><i class="ti ti-route" style="font-size:13px"></i> Total rides</div>
-          <div class="stat-val" id="analytics-total-rides">ÔÇö</div>
+          <div class="stat-val" id="analytics-total-rides">â€”</div>
           <div class="stat-sub">all time</div>
         </div>
         <div class="stat green">
           <div class="stat-label"><i class="ti ti-clock" style="font-size:13px"></i> Avg duration</div>
-          <div class="stat-val" id="analytics-avg-duration">ÔÇö</div>
+          <div class="stat-val" id="analytics-avg-duration">â€”</div>
           <div class="stat-sub">minutes per ride</div>
         </div>
         <div class="stat amber">
           <div class="stat-label"><i class="ti ti-ruler" style="font-size:13px"></i> Total distance</div>
-          <div class="stat-val" id="analytics-total-distance">ÔÇö</div>
+          <div class="stat-val" id="analytics-total-distance">â€”</div>
           <div class="stat-sub">miles traveled</div>
         </div>
         <div class="stat red">
           <div class="stat-label"><i class="ti ti-heart-pulse" style="font-size:13px"></i> Health issues</div>
-          <div class="stat-val" id="analytics-health-issues">ÔÇö</div>
+          <div class="stat-val" id="analytics-health-issues">â€”</div>
           <div class="stat-sub">scooters flagged</div>
         </div>
       </div>
@@ -630,7 +630,7 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
       </div>
     </div>
 
-    <!-- ÔöÇÔöÇ PAGE: Fleet Registry ÔöÇÔöÇ -->
+    <!-- â”€â”€ PAGE: Fleet Registry â”€â”€ -->
     <div class="page" id="page-registry">
       <div class="page-hd">
         <div>
@@ -646,22 +646,22 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
       <div class="stat-row" style="grid-template-columns:repeat(4,1fr)">
         <div class="stat green">
           <div class="stat-label"><i class="ti ti-check-circle" style="font-size:13px"></i> Active</div>
-          <div class="stat-val" id="registry-active">ÔÇö</div>
+          <div class="stat-val" id="registry-active">â€”</div>
           <div class="stat-sub">in service</div>
         </div>
         <div class="stat amber">
           <div class="stat-label"><i class="ti ti-charging" style="font-size:13px"></i> Charging</div>
-          <div class="stat-val" id="registry-charging">ÔÇö</div>
+          <div class="stat-val" id="registry-charging">â€”</div>
           <div class="stat-sub">plugged in</div>
         </div>
         <div class="stat red">
           <div class="stat-label"><i class="ti ti-wrench" style="font-size:13px"></i> Maintenance</div>
-          <div class="stat-val" id="registry-maintenance">ÔÇö</div>
+          <div class="stat-val" id="registry-maintenance">â€”</div>
           <div class="stat-sub">out of service</div>
         </div>
         <div class="stat blue">
           <div class="stat-label"><i class="ti ti-bolt" style="font-size:13px"></i> Speed limited</div>
-          <div class="stat-val" id="registry-speed-limited">ÔÇö</div>
+          <div class="stat-val" id="registry-speed-limited">â€”</div>
           <div class="stat-sub">mode locked</div>
         </div>
       </div>
@@ -702,7 +702,7 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
             <input type="number" id="pricing-base" value="${pricingConfig.baseFee}" step="0.01" min="0" onchange="updatePricing('baseFee', this.value)" style="width:100%;padding:8px 12px;background:var(--navy-3);border:1px solid var(--border-light);border-radius:6px;color:var(--text-primary);font-size:13px">
           </div>
           <div style="font-size:11px;color:var(--text-tertiary)">
-            Pricing applies to all rides. Total cost = base fee + (rate per minute +ù duration)
+            Pricing applies to all rides. Total cost = base fee + (rate per minute Ã— duration)
           </div>
         </div>
       </div>
@@ -724,7 +724,7 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
       </div>
     </div>
 
-    <!-- ÔöÇÔöÇ PAGE: Live Map ÔöÇÔöÇ -->
+    <!-- â”€â”€ PAGE: Live Map â”€â”€ -->
     <div class="page" id="page-map">
       <div class="page-hd">
         <div>
@@ -907,7 +907,7 @@ function battClass(p){return p>50?'tv-hi':p>20?'tv-mid':'tv-lo'}
 function battColor(p){return p>50?'#10B981':p>20?'#F59E0B':'#EF4444'}
 function timeSince(ts){const s=Math.floor((Date.now()-ts)/1000);if(s<3)return 'just now';if(s<60)return s+'s ago';return Math.floor(s/60)+'m ago';}
 
-// ÔöÇÔöÇ Navigation ÔöÇÔöÇ
+// â”€â”€ Navigation â”€â”€
 function goTo(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -919,7 +919,7 @@ function goTo(page) {
   if(page === 'map') renderMapPage();
 }
 
-// ÔöÇÔöÇ Alerts ÔöÇÔöÇ
+// â”€â”€ Alerts â”€â”€
 function addAlert(type, msg, isBroadcast) {
   const now = new Date();
   const timeStr = now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
@@ -948,7 +948,7 @@ function renderAlerts() {
     navBadge.style.display = 'none';
   }
   if(alertLog.length === 0) {
-    list.innerHTML = '<div class="alerts-empty">No alerts ÔÇö all systems normal</div>';
+    list.innerHTML = '<div class="alerts-empty">No alerts â€” all systems normal</div>';
     return;
   }
   list.innerHTML = alertLog.map(a => `
@@ -986,7 +986,7 @@ function checkAlerts(fleet) {
     const d = fleet[id];
     const prev = prevStates[id] || {};
     if(d.battery <= 20 && d.battery > 5 && !prev.lowBattAlerted) {
-      addAlert('warn', `${id} ÔÇö battery low (${Math.round(d.battery)}%)`);
+      addAlert('warn', `${id} â€” battery low (${Math.round(d.battery)}%)`);
       if(!prevStates[id]) prevStates[id]={};
       prevStates[id].lowBattAlerted = true;
     }
@@ -994,19 +994,19 @@ function checkAlerts(fleet) {
       if(prevStates[id]) prevStates[id].lowBattAlerted = false;
     }
     if(d.battery <= 5 && d.battery > 0 && !prev.critBattAlerted) {
-      addAlert('danger', `${id} ÔÇö battery critical (${Math.round(d.battery)}%) ÔÇö charge immediately`);
+      addAlert('danger', `${id} â€” battery critical (${Math.round(d.battery)}%) â€” charge immediately`);
       if(!prevStates[id]) prevStates[id]={};
       prevStates[id].critBattAlerted = true;
     }
-    if(!d.online && prev.wasOnline !== false) addAlert('danger', `${id} ÔÇö went offline`);
-    if(d.online && prev.wasOnline === false) addAlert('info', `${id} ÔÇö back online`);
+    if(!d.online && prev.wasOnline !== false) addAlert('danger', `${id} â€” went offline`);
+    if(d.online && prev.wasOnline === false) addAlert('info', `${id} â€” back online`);
     if(!prevStates[id]) prevStates[id] = {};
     prevStates[id].battery = d.battery;
     prevStates[id].wasOnline = d.online;
   });
 }
 
-// ÔöÇÔöÇ Filter / Sort ÔöÇÔöÇ
+// â”€â”€ Filter / Sort â”€â”€
 function setFilter(f) {
   activeFilter = f;
   document.querySelectorAll('.filter-pill').forEach(p => p.classList.toggle('active', p.dataset.filter === f));
@@ -1031,14 +1031,14 @@ function applyFilterSort(fleet) {
   return ids;
 }
 
-// ÔöÇÔöÇ Render fleet ÔöÇÔöÇ
+// â”€â”€ Render fleet â”€â”€
 function renderFleet(fleet) {
   const allIds = Object.keys(fleet);
   let on=0,tb=0,lk=0;
   allIds.forEach(id=>{const d=fleet[id];if(d.online)on++;tb+=d.battery||0;if(d.brake)lk++;});
   document.getElementById('sum-total').textContent = allIds.length;
   document.getElementById('sum-online').textContent = on;
-  document.getElementById('sum-batt').textContent = allIds.length ? Math.round(tb/allIds.length)+'%' : 'ÔÇö';
+  document.getElementById('sum-batt').textContent = allIds.length ? Math.round(tb/allIds.length)+'%' : 'â€”';
   document.getElementById('sum-locked').textContent = lk;
 
   const ids = applyFilterSort(fleet);
@@ -1080,7 +1080,7 @@ function renderFleet(fleet) {
         </div>
         <div class="tel-cell">
           <div class="tel-lbl">Mode</div>
-          <div class="tel-val tv-mode">${d.mode||'ÔÇö'}</div>
+          <div class="tel-val tv-mode">${d.mode||'â€”'}</div>
           <div class="tel-unit">riding</div>
         </div>
         <div class="tel-cell">
@@ -1119,7 +1119,7 @@ function renderFleet(fleet) {
   }).join('');
 }
 
-// ÔöÇÔöÇ Battery page ÔöÇÔöÇ
+// â”€â”€ Battery page â”€â”€
 function initChart() {
   const ctx = document.getElementById('batt-chart');
   if(!ctx) return;
@@ -1169,7 +1169,7 @@ function renderBatteryPage() {
   }).join('') + '<div style="height:16px"></div>';
 }
 
-// ÔöÇÔöÇ Analytics page ÔöÇÔöÇ
+// â”€â”€ Analytics page â”€â”€
 function renderAnalyticsPage() {
   const fleet = fleetData;
   const ids = Object.keys(fleet);
@@ -1214,7 +1214,7 @@ function renderAnalyticsPage() {
   });
   
   document.getElementById('analytics-total-rides').textContent = totalRides;
-  document.getElementById('analytics-avg-duration').textContent = totalRides ? Math.round(totalDuration / totalRides) + 'm' : 'ÔÇö';
+  document.getElementById('analytics-avg-duration').textContent = totalRides ? Math.round(totalDuration / totalRides) + 'm' : 'â€”';
   document.getElementById('analytics-total-distance').textContent = totalDistance.toFixed(1);
   document.getElementById('analytics-health-issues').textContent = healthIssues;
   
@@ -1367,7 +1367,7 @@ function renderHealthScores() {
   }).join('') + '<div style="height:16px"></div>';
 }
 
-// ÔöÇÔöÇ Registry page ÔöÇÔöÇ
+// â”€â”€ Registry page â”€â”€
 function renderRegistryPage() {
   const fleet = fleetData;
   const ids = Object.keys(fleet);
@@ -1503,11 +1503,11 @@ function openRegistryModal() {
     };
     renderFleet(fleetData);
     renderRegistryPage();
-    addAlert('info', `${id} ÔÇö added to registry`);
+    addAlert('info', `${id} â€” added to registry`);
   }
 }
 
-// ÔöÇÔöÇ Rider accounts ÔöÇÔöÇ
+// â”€â”€ Rider accounts â”€â”€
 function renderRidersList() {
   const list = document.getElementById('riders-list');
   const riderIds = Object.keys(riderAccounts);
@@ -1581,7 +1581,7 @@ function addRider() {
       };
       renderRidersList();
       renderRegistryPage();
-      addAlert('info', `${id} ÔÇö rider account created`);
+      addAlert('info', `${id} â€” rider account created`);
     }
   }
 }
@@ -1618,7 +1618,7 @@ function assignScooterToRider(riderId, scooterId) {
     fleetData[scooterId].brake = false;
   }
 
-  addAlert('info', `${riderId} ÔÇö assigned to ${scooterId}, session started`);
+  addAlert('info', `${riderId} â€” assigned to ${scooterId}, session started`);
   addAuditLog('scooter_assign', `${scooterId} assigned to ${riderId}`);
 
   renderRidersList();
@@ -1665,7 +1665,7 @@ function endRiderSession(riderId, scooterId = null, render = true) {
   riderAccounts[riderId].assignedScooters = riderAccounts[riderId].assignedScooters.filter(s => s !== scooterId);
   delete riderAccounts[riderId].sessions[scooterId];
 
-  addAlert('info', `${riderId} ÔÇö session ended for ${scooterId} (${duration} min)`);
+  addAlert('info', `${riderId} â€” session ended for ${scooterId} (${duration} min)`);
   addAuditLog('session_end', `${scooterId} session ended for ${riderId}, duration: ${duration} min`);
 
   if(render) {
@@ -1681,12 +1681,12 @@ function deleteRider(id) {
     delete riderAccounts[id];
     renderRidersList();
     renderRegistryPage();
-    addAlert('info', `${id} ÔÇö rider account deleted`);
+    addAlert('info', `${id} â€” rider account deleted`);
     addAuditLog('rider_delete', `Rider account ${id} deleted`);
   }
 }
 
-// ÔöÇÔöÇ CSV Export ÔöÇÔöÇ
+// â”€â”€ CSV Export â”€â”€
 function downloadCSV(filename, csvContent) {
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
@@ -1809,7 +1809,7 @@ function exportAllDataCSV() {
   addAuditLog('data_export', `Fleet data exported to CSV`);
 }
 
-// ÔöÇÔöÇ App Authentication ÔöÇÔöÇ
+// â”€â”€ App Authentication â”€â”€
 function handleAppLogin(event) {
   event.preventDefault();
   const username = document.getElementById('login-username').value;
@@ -1862,7 +1862,7 @@ function toggleTheme() {
   addAuditLog('theme_toggle', `Switched to ${isDarkMode ? 'dark' : 'light'} mode`);
 }
 
-// ÔöÇÔöÇ Audit Logging ÔöÇÔöÇ
+// â”€â”€ Audit Logging â”€â”€
 function addAuditLog(action, details) {
   const entry = {
     timestamp: Date.now(),
@@ -1900,7 +1900,7 @@ function renderAuditLog() {
   }).join('') + '<div style="height:16px"></div>';
 }
 
-// ÔöÇÔöÇ Pricing System ÔöÇÔöÇ
+// â”€â”€ Pricing System â”€â”€
 function updatePricing(field, value) {
   pricingConfig[field] = parseFloat(value);
   addAlert('info', `Pricing updated: ${field} = ${value}`);
@@ -1911,7 +1911,7 @@ function calculateRideCost(duration) {
   return pricingConfig.baseFee + (pricingConfig.ratePerMinute * duration);
 }
 
-// ÔöÇÔöÇ Maintenance Scheduling ÔöÇÔöÇ
+// â”€â”€ Maintenance Scheduling â”€â”€
 function scheduleMaintenance() {
   const scooterId = prompt('Enter scooter ID (e.g., SCO-001):');
   if(!scooterId || !fleetData[scooterId]) {
@@ -1954,7 +1954,7 @@ function renderMaintenanceList() {
       <div style="flex:1">
         <div style="font-size:13px;font-weight:500;color:var(--text-primary)">${item.scooterId}</div>
         <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">
-          ${item.type} ÔÇó ${item.scheduledDate} ${item.completed ? 'Ô£ô' : 'ÔÇó Pending'}
+          ${item.type} â€¢ ${item.scheduledDate} ${item.completed ? 'âœ“' : 'â€¢ Pending'}
         </div>
         ${item.notes ? `<div style="font-size:10px;color:var(--text-tertiary);margin-top:2px">${item.notes}</div>` : ''}
       </div>
@@ -1984,7 +1984,7 @@ function deleteMaintenance(index) {
   }
 }
 
-// ÔöÇÔöÇ User Roles & Permissions ÔöÇÔöÇ
+// â”€â”€ User Roles & Permissions â”€â”€
 function hasPermission(permission) {
   if(!currentUser) return false;
   if(currentUser.role === 'admin') return true;
@@ -2069,7 +2069,7 @@ function deleteUserRole(userId) {
   }
 }
 
-// ÔöÇÔöÇ Error Handling ÔöÇÔöÇ
+// â”€â”€ Error Handling â”€â”€
 function safeExecute(fn, errorMessage = 'Operation failed') {
   try {
     return fn();
@@ -2101,7 +2101,7 @@ function validateRiderId(id) {
   return true;
 }
 
-// ÔöÇÔöÇ Admin Authentication (for export privileges) ÔöÇÔöÇ
+// â”€â”€ Admin Authentication (for export privileges) â”€â”€
 function handleAuth() {
   if(isAdmin) {
     logout();
@@ -2148,7 +2148,7 @@ function updateAuthButton() {
   }
 }
 
-// ÔöÇÔöÇ Commands ÔöÇÔöÇ
+// â”€â”€ Commands â”€â”€
 function sendCmd(id, action) {
   const card = document.getElementById('card-'+id);
   if(card){card.classList.add('cmd-flash');setTimeout(()=>card.classList.remove('cmd-flash'),400);}
@@ -2168,10 +2168,10 @@ function broadcastCmd(action) {
   if(!ids.length) return;
   ids.forEach(id => sendCmd(id, action));
   const labels = {brakeOn:'Lock ALL',brakeOff:'Unlock ALL',mode:'Cycle mode ALL',light:'Toggle lights ALL'};
-  addAlert('info', `${labels[action]||action} ÔÇö sent to ${ids.length} scooter${ids.length!==1?'s':''}`, true);
+  addAlert('info', `${labels[action]||action} â€” sent to ${ids.length} scooter${ids.length!==1?'s':''}`, true);
 }
 
-// ÔöÇÔöÇ Polling ÔöÇÔöÇ
+// â”€â”€ Polling â”€â”€
 function fetchFleet() {
   if(demoMode) {
     Object.keys(fleetData).forEach(id=>{
@@ -2209,7 +2209,7 @@ function fetchFleet() {
             if(distance > globalGeofence.radius) {
               // Auto-lock if outside geofence
               d.brake = true;
-              addAlert('warn', `${id} ÔÇö left geofence zone (${distance.toFixed(0)}m > ${globalGeofence.radius}m), auto-locked`);
+              addAlert('warn', `${id} â€” left geofence zone (${distance.toFixed(0)}m > ${globalGeofence.radius}m), auto-locked`);
             }
           }
         }
@@ -2238,14 +2238,14 @@ function fetchFleet() {
   });
 }
 
-// ÔöÇÔöÇ Init ÔöÇÔöÇ
-fleetData = {};
+// â”€â”€ Init â”€â”€
+fleetData = JSON.parse(JSON.stringify(DEMO));
 initPhase2Data();
 initChart();
 renderFleet(fleetData);
-setInterval(fetchFleet, 1500); fetchFleet();
+// Don't start polling until user logs in
 
-// ÔöÇÔöÇ Phase 3: Map & GPS ÔöÇÔöÇ
+// â”€â”€ Phase 3: Map & GPS â”€â”€
 let map = null;
 let scooterMarkers = {};
 let geofenceCircle = null;
@@ -2258,7 +2258,7 @@ function initMap() {
 
   // Add OpenStreetMap tile layer
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '-® OpenStreetMap contributors'
+    attribution: 'Â© OpenStreetMap contributors'
   }).addTo(map);
 
   renderMap();
@@ -2375,7 +2375,7 @@ function renderMapPage() {
   document.getElementById('radius-value').textContent = globalGeofence.radius + 'm';
 }
 
-// ÔöÇÔöÇ Trip Route Replay ÔöÇÔöÇ
+// â”€â”€ Trip Route Replay â”€â”€
 function replayTripRoute(scooterId) {
   const gps = scooterGPS[scooterId];
   if(!gps || !gps.trail || gps.trail.length === 0) {
@@ -2401,7 +2401,7 @@ function replayTripRoute(scooterId) {
   addAlert('info', `Replaying trip route for ${scooterId}...`);
 }
 
-// ÔöÇÔöÇ Rider App Telemetry View ÔöÇÔöÇ
+// â”€â”€ Rider App Telemetry View â”€â”€
 function showRiderTelemetry(riderId) {
   const rider = riderAccounts[riderId];
   if(!rider) return;
@@ -2427,7 +2427,7 @@ function showRiderTelemetry(riderId) {
   alert(telemetry);
 }
 
-// ÔöÇÔöÇ End-of-Ride Reporting ÔöÇÔöÇ
+// â”€â”€ End-of-Ride Reporting â”€â”€
 function endRideReport(scooterId, riderId) {
   const rider = riderAccounts[riderId];
   if(!rider) return;

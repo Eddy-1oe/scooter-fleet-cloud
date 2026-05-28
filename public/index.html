@@ -13,6 +13,60 @@
     min-height: 100vh;
     padding: 16px;
   }
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #2a2a2a;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .brand-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: #185FA5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #E6F1FB;
+    font-size: 18px;
+  }
+  .brand-name {
+    font-size: 16px;
+    font-weight: 500;
+    color: #ffffff;
+  }
+  .brand-sub {
+    font-size: 12px;
+    color: #666666;
+  }
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #666666;
+  }
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #1D9E75;
+  }
+  .status-dot.offline {
+    background: #E24B4A;
+  }
   h1 {
     text-align: center;
     font-size: 16px;
@@ -142,6 +196,47 @@
     font-size: 14px;
     margin-top: 60px;
   }
+  .summary-section {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .summary-card {
+    background: #1a1a1a;
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid #2a2a2a;
+  }
+  .summary-label {
+    font-size: 11px;
+    color: #666666;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .summary-value {
+    font-size: 24px;
+    font-weight: 600;
+    color: #ffffff;
+  }
+  .chart-section {
+    background: #1a1a1a;
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid #2a2a2a;
+    margin-bottom: 24px;
+  }
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .chart-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: #ffffff;
+  }
   .history-section {
     margin-top: 16px;
     border-top: 1px solid #2a2a2a;
@@ -197,11 +292,52 @@
 </head>
 <body>
 
-<h1>⚡ Scooter Fleet</h1>
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon">⚡</div>
+    <div>
+      <div class="brand-name">Scooter Fleet</div>
+      <div class="brand-sub">Fleet Management Dashboard</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="status-indicator">
+      <div class="status-dot" id="status-dot"></div>
+      <span id="status-text">Connecting...</span>
+    </div>
+  </div>
+</div>
+
+<div class="summary-section">
+  <div class="summary-card">
+    <div class="summary-label">Total Scooters</div>
+    <div class="summary-value" id="summary-total">0</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Online</div>
+    <div class="summary-value" id="summary-online" style="color: #44ff88;">0</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Avg Battery</div>
+    <div class="summary-value" id="summary-battery">0%</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Locked</div>
+    <div class="summary-value" id="summary-locked" style="color: #ff4444;">0</div>
+  </div>
+</div>
+<div class="chart-section">
+  <div class="chart-header">
+    <div class="chart-title">Battery Levels</div>
+  </div>
+  <canvas id="batteryChart" height="200"></canvas>
+</div>
 <div class="fleet-grid" id="fleet"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
   const SERVER = '';  // empty = same host
+  let batteryChart = null;
 
   function batteryColor(pct) {
     if (pct > 50) return '#44ff88';
@@ -220,6 +356,62 @@
     if (sec < 5)  return 'just now';
     if (sec < 60) return sec + 's ago';
     return Math.floor(sec / 60) + 'm ago';
+  }
+
+  function initChart() {
+    const ctx = document.getElementById('batteryChart').getContext('2d');
+    batteryChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Battery %',
+          data: [],
+          backgroundColor: [],
+          borderRadius: 4,
+          borderSkipped: false
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: 100,
+            grid: {
+              color: '#2a2a2a'
+            },
+            ticks: {
+              color: '#666666'
+            }
+          },
+          x: {
+            grid: {
+              display: false
+            },
+            ticks: {
+              color: '#666666'
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function updateChart(fleet) {
+    if (!batteryChart) return;
+
+    const ids = Object.keys(fleet);
+    batteryChart.data.labels = ids;
+    batteryChart.data.datasets[0].data = ids.map(id => fleet[id].battery || 0);
+    batteryChart.data.datasets[0].backgroundColor = ids.map(id => batteryColor(fleet[id].battery || 0));
+    batteryChart.update();
   }
 
   function sendCommand(id, action) {
@@ -381,6 +573,25 @@
         const container = document.getElementById('fleet');
         const ids = Object.keys(fleet);
 
+        // Update status indicator
+        document.getElementById('status-dot').classList.remove('offline');
+        document.getElementById('status-text').textContent = 'Live';
+
+        // Update summary statistics
+        const total = ids.length;
+        const online = ids.filter(id => fleet[id].online).length;
+        const batteries = ids.map(id => fleet[id].battery || 0);
+        const avgBattery = batteries.length > 0 ? (batteries.reduce((a, b) => a + b, 0) / batteries.length).toFixed(0) : 0;
+        const locked = ids.filter(id => fleet[id].brake).length;
+
+        document.getElementById('summary-total').textContent = total;
+        document.getElementById('summary-online').textContent = online;
+        document.getElementById('summary-battery').textContent = avgBattery + '%';
+        document.getElementById('summary-locked').textContent = locked;
+
+        // Update battery chart
+        updateChart(fleet);
+
         if (ids.length === 0) {
           container.innerHTML = '<div class="no-scooters">No scooters connected yet</div>';
           return;
@@ -393,11 +604,14 @@
       .catch(() => {
         document.getElementById('fleet').innerHTML =
           '<div class="no-scooters">Cannot reach server</div>';
+        document.getElementById('status-dot').classList.add('offline');
+        document.getElementById('status-text').textContent = 'Offline';
       });
   }
 
   setInterval(fetchFleet, 1000);
   fetchFleet();
+  initChart();
 </script>
 </body>
 </html>

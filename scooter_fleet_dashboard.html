@@ -1,0 +1,306 @@
+
+<h2 class="sr-only">Scooter fleet management dashboard showing live telemetry, battery status, speed, and remote controls for each scooter in the fleet.</h2>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body,div{font-family:var(--font-sans)}
+.dash{padding:1rem 0}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:0.5px solid var(--color-border-tertiary)}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-icon{width:32px;height:32px;border-radius:8px;background:#185FA5;display:flex;align-items:center;justify-content:center;color:#E6F1FB}
+.brand-name{font-size:15px;font-weight:500;color:var(--color-text-primary)}
+.brand-sub{font-size:12px;color:var(--color-text-secondary)}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.dot-live{width:7px;height:7px;border-radius:50%;background:#1D9E75;display:inline-block;margin-right:4px}
+.live-label{font-size:12px;color:var(--color-text-secondary)}
+.server-url{font-size:11px;color:var(--color-text-tertiary);font-family:var(--font-mono);background:var(--color-background-secondary);padding:3px 8px;border-radius:var(--border-radius-md)}
+
+.summary-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.5rem}
+.sum-card{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:0.85rem 1rem}
+.sum-label{font-size:11px;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;display:flex;align-items:center;gap:5px}
+.sum-val{font-size:22px;font-weight:500;color:var(--color-text-primary)}
+.sum-sub{font-size:11px;color:var(--color-text-secondary);margin-top:2px}
+
+.fleet-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-bottom:1.5rem}
+.scard{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;transition:border-color .2s}
+.scard:hover{border-color:var(--color-border-secondary)}
+.scard.offline{opacity:.6}
+.scard-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 10px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.sid{display:flex;align-items:center;gap:8px}
+.sid-icon{width:28px;height:28px;border-radius:7px;background:#E6F1FB;display:flex;align-items:center;justify-content:center;color:#185FA5;font-size:14px}
+.sid-name{font-size:13px;font-weight:500;color:var(--color-text-primary)}
+.sid-ip{font-size:11px;color:var(--color-text-tertiary);font-family:var(--font-mono)}
+.badge{font-size:10px;font-weight:500;padding:3px 9px;border-radius:20px}
+.badge.on{background:#E1F5EE;color:#0F6E56}
+.badge.off{background:var(--color-background-danger);color:var(--color-text-danger)}
+.badge.moving{background:#E6F1FB;color:#185FA5}
+
+.tel-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--color-border-tertiary);border-bottom:0.5px solid var(--color-border-tertiary)}
+.tel-cell{background:var(--color-background-primary);padding:10px 12px;text-align:center}
+.tel-lbl{font-size:10px;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
+.tel-val{font-size:18px;font-weight:500}
+.tel-unit{font-size:10px;color:var(--color-text-secondary);margin-top:1px}
+.c-speed{color:var(--color-text-primary)}
+.c-batt-hi{color:#0F6E56}
+.c-batt-mid{color:#BA7517}
+.c-batt-lo{color:var(--color-text-danger)}
+.c-mode{color:#185FA5}
+.c-volt{color:#533AB7}
+.c-brake-on{color:var(--color-text-danger)}
+.c-brake-off{color:#0F6E56}
+.c-light-on{color:#BA7517}
+.c-light-off{color:var(--color-text-secondary)}
+
+.batt-bar-wrap{padding:8px 14px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.batt-bar-track{height:4px;background:var(--color-background-secondary);border-radius:2px;overflow:hidden}
+.batt-bar-fill{height:100%;border-radius:2px;transition:width .5s ease}
+
+.ctrl-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px 12px}
+.ctrl-btn{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:9px 8px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:var(--color-text-secondary);transition:all .15s;font-family:var(--font-sans)}
+.ctrl-btn:hover{background:var(--color-background-primary);border-color:var(--color-border-secondary);color:var(--color-text-primary)}
+.ctrl-btn:active{transform:scale(0.97)}
+.ctrl-btn.span2{grid-column:span 2}
+.ctrl-btn.danger{border-color:var(--color-border-danger);color:var(--color-text-danger)}
+.ctrl-btn.success{border-color:var(--color-border-success);color:var(--color-text-success)}
+.ctrl-btn.info{border-color:var(--color-border-info);color:var(--color-text-info)}
+.ctrl-btn.warn{border-color:var(--color-border-warning);color:var(--color-text-warning)}
+
+.lastseen{text-align:center;font-size:10px;color:var(--color-text-tertiary);padding:6px 12px 10px}
+
+.chart-section{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem 1.25rem;margin-bottom:1.5rem}
+.chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.chart-title{font-size:13px;font-weight:500;color:var(--color-text-primary)}
+.chart-legend{display:flex;gap:14px}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--color-text-secondary)}
+.leg-dot{width:8px;height:8px;border-radius:2px}
+
+.no-scooters{text-align:center;padding:3rem 1rem;color:var(--color-text-secondary);font-size:14px}
+.cmd-flash{animation:flash .4s ease}
+@keyframes flash{0%{opacity:.4}100%{opacity:1}}
+</style>
+
+<div class="dash">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-icon"><i class="ti ti-bolt" aria-hidden="true"></i></div>
+      <div>
+        <div class="brand-name">ScooterFleet</div>
+        <div class="brand-sub">Fleet management console</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span class="server-url" id="server-url">http://10.104.13.197:3000</span>
+      <span><span class="dot-live" id="server-dot"></span><span class="live-label" id="server-status">connecting…</span></span>
+    </div>
+  </div>
+
+  <div class="summary-row">
+    <div class="sum-card">
+      <div class="sum-label"><i class="ti ti-device-mobile" style="font-size:13px" aria-hidden="true"></i>total scooters</div>
+      <div class="sum-val" id="sum-total">3</div>
+      <div class="sum-sub">in fleet</div>
+    </div>
+    <div class="sum-card">
+      <div class="sum-label"><i class="ti ti-wifi" style="font-size:13px" aria-hidden="true"></i>online</div>
+      <div class="sum-val" id="sum-online" style="color:#0F6E56">3</div>
+      <div class="sum-sub">connected</div>
+    </div>
+    <div class="sum-card">
+      <div class="sum-label"><i class="ti ti-battery-2" style="font-size:13px" aria-hidden="true"></i>avg battery</div>
+      <div class="sum-val" id="sum-batt">—</div>
+      <div class="sum-sub">fleet average</div>
+    </div>
+    <div class="sum-card">
+      <div class="sum-label"><i class="ti ti-lock" style="font-size:13px" aria-hidden="true"></i>locked</div>
+      <div class="sum-val" id="sum-locked">0</div>
+      <div class="sum-sub">brake active</div>
+    </div>
+  </div>
+
+  <div class="chart-section">
+    <div class="chart-head">
+      <span class="chart-title">Battery levels</span>
+      <div class="chart-legend" id="chart-legend"></div>
+    </div>
+    <div style="position:relative;width:100%;height:120px">
+      <canvas id="batt-chart" role="img" aria-label="Bar chart showing battery percentage for each scooter in the fleet.">Fleet battery levels</canvas>
+    </div>
+  </div>
+
+  <div class="fleet-grid" id="fleet-grid">
+    <div class="no-scooters"><i class="ti ti-wifi-off" style="font-size:32px;display:block;margin-bottom:8px;opacity:.4" aria-hidden="true"></i>Waiting for scooters to connect…</div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const SERVER = '';
+const COLORS = ['#3266ad','#1D9E75','#BA7517','#9e327a','#32869e'];
+
+let fleetData = {};
+let battChart = null;
+let demoMode = true;
+
+const DEMO = {
+  'SCO-001': {battery:78,voltage:37.8,speed:8.5,moving:true,mode:'D',brake:false,light:true,diag:false,valid:true,online:true,lastSeen:Date.now()},
+  'SCO-002': {battery:42,voltage:34.2,speed:0,moving:false,mode:'ECO',brake:true,light:false,diag:false,valid:true,online:true,lastSeen:Date.now()-800},
+  'SCO-003': {battery:15,voltage:32.5,speed:3.2,moving:true,mode:'S',brake:false,light:true,diag:false,valid:true,online:true,lastSeen:Date.now()-1200},
+};
+
+function battClass(p){return p>50?'c-batt-hi':p>20?'c-batt-mid':'c-batt-lo'}
+function battColor(p){return p>50?'#1D9E75':p>20?'#EF9F27':'#E24B4A'}
+function timeSince(ts){const s=Math.floor((Date.now()-ts)/1000);if(s<3)return 'just now';if(s<60)return s+'s ago';return Math.floor(s/60)+'m ago';}
+
+function initChart(){
+  battChart = new Chart(document.getElementById('batt-chart'),{
+    type:'bar',
+    data:{labels:[],datasets:[{label:'Battery %',data:[],backgroundColor:[],borderRadius:4,borderSkipped:false}]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toFixed(0)+'%'}}},
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:11},color:'#888'}},
+        y:{min:0,max:100,grid:{color:'rgba(128,128,128,.1)'},ticks:{font:{size:10},color:'#888',callback:v=>v+'%'}}
+      }
+    }
+  });
+}
+
+function updateChart(fleet){
+  if(!battChart)return;
+  const ids=Object.keys(fleet);
+  battChart.data.labels=ids;
+  battChart.data.datasets[0].data=ids.map(id=>fleet[id].battery||0);
+  battChart.data.datasets[0].backgroundColor=ids.map(id=>battColor(fleet[id].battery||0));
+  battChart.update('none');
+  const legend=document.getElementById('chart-legend');
+  legend.innerHTML=ids.map((id,i)=>`<span class="leg-item"><span class="leg-dot" style="background:${battColor(fleet[id].battery||0)}"></span>${id}</span>`).join('');
+}
+
+function renderFleet(fleet){
+  const ids=Object.keys(fleet);
+  if(ids.length===0){document.getElementById('fleet-grid').innerHTML='<div class="no-scooters"><i class="ti ti-wifi-off" style="font-size:32px;display:block;margin-bottom:8px;opacity:.4" aria-hidden="true"></i>No scooters connected</div>';return;}
+
+  let onlineCount=0,totalBatt=0,lockedCount=0;
+  ids.forEach(id=>{
+    const d=fleet[id];
+    if(d.online)onlineCount++;
+    totalBatt+=d.battery||0;
+    if(d.brake)lockedCount++;
+  });
+  document.getElementById('sum-total').textContent=ids.length;
+  document.getElementById('sum-online').textContent=onlineCount;
+  document.getElementById('sum-batt').textContent=Math.round(totalBatt/ids.length)+'%';
+  document.getElementById('sum-locked').textContent=lockedCount;
+
+  updateChart(fleet);
+
+  document.getElementById('fleet-grid').innerHTML=ids.map(id=>{
+    const d=fleet[id];
+    const bp=d.battery||0;
+    return `<div class="scard${d.online?'':' offline'}" id="card-${id}">
+      <div class="scard-head">
+        <div class="sid">
+          <div class="sid-icon"><i class="ti ti-bolt" aria-hidden="true"></i></div>
+          <div>
+            <div class="sid-name">${id}</div>
+            <div class="sid-ip">${d.ip||'192.168.x.x'}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:5px;align-items:center">
+          ${d.moving?`<span class="badge moving">moving</span>`:''}
+          <span class="badge ${d.online?'on':'off'}">${d.online?'online':'offline'}</span>
+        </div>
+      </div>
+      <div class="tel-grid">
+        <div class="tel-cell">
+          <div class="tel-lbl">Speed</div>
+          <div class="tel-val c-speed">${(d.speed||0).toFixed(1)}</div>
+          <div class="tel-unit">mph</div>
+        </div>
+        <div class="tel-cell">
+          <div class="tel-lbl">Battery</div>
+          <div class="tel-val ${battClass(bp)}">${bp.toFixed(0)}</div>
+          <div class="tel-unit">%</div>
+        </div>
+        <div class="tel-cell">
+          <div class="tel-lbl">Mode</div>
+          <div class="tel-val c-mode">${d.mode||'—'}</div>
+          <div class="tel-unit">riding</div>
+        </div>
+        <div class="tel-cell">
+          <div class="tel-lbl">Voltage</div>
+          <div class="tel-val c-volt">${(d.voltage||0).toFixed(1)}</div>
+          <div class="tel-unit">V</div>
+        </div>
+        <div class="tel-cell">
+          <div class="tel-lbl">Brake</div>
+          <div class="tel-val ${d.brake?'c-brake-on':'c-brake-off'}">${d.brake?'ON':'OFF'}</div>
+          <div class="tel-unit">state</div>
+        </div>
+        <div class="tel-cell">
+          <div class="tel-lbl">Light</div>
+          <div class="tel-val ${d.light?'c-light-on':'c-light-off'}">${d.light?'ON':'OFF'}</div>
+          <div class="tel-unit">headlight</div>
+        </div>
+      </div>
+      <div class="batt-bar-wrap">
+        <div class="batt-bar-track"><div class="batt-bar-fill" style="width:${bp}%;background:${battColor(bp)}"></div></div>
+      </div>
+      <div class="ctrl-grid">
+        <button class="ctrl-btn danger span2" onclick="sendCmd('${id}','brakeOn')" aria-label="Lock scooter ${id}"><i class="ti ti-lock" style="font-size:14px" aria-hidden="true"></i>Lock / Brake ON</button>
+        <button class="ctrl-btn success span2" onclick="sendCmd('${id}','brakeOff')" aria-label="Unlock scooter ${id}"><i class="ti ti-lock-open" style="font-size:14px" aria-hidden="true"></i>Unlock / Brake OFF</button>
+        <button class="ctrl-btn warn" onclick="sendCmd('${id}','mode')" aria-label="Cycle mode on ${id}"><i class="ti ti-bolt" style="font-size:13px" aria-hidden="true"></i>Cycle mode</button>
+        <button class="ctrl-btn info" onclick="sendCmd('${id}','light')" aria-label="Toggle light on ${id}"><i class="ti ti-bulb" style="font-size:13px" aria-hidden="true"></i>Toggle light</button>
+        <button class="ctrl-btn" onclick="sendCmd('${id}','walk')" aria-label="Walk mode on ${id}"><i class="ti ti-walk" style="font-size:13px" aria-hidden="true"></i>Walk mode</button>
+        <button class="ctrl-btn danger" onclick="sendCmd('${id}','power')" aria-label="Power toggle ${id}"><i class="ti ti-power" style="font-size:13px" aria-hidden="true"></i>Power ON/OFF</button>
+      </div>
+      <div class="lastseen" id="ls-${id}">Last seen: ${timeSince(d.lastSeen)}</div>
+    </div>`;
+  }).join('');
+}
+
+function sendCmd(id,action){
+  const card=document.getElementById('card-'+id);
+  if(card){card.classList.add('cmd-flash');setTimeout(()=>card.classList.remove('cmd-flash'),400);}
+  if(demoMode){
+    if(action==='brakeOn')fleetData[id]&&(fleetData[id].brake=true);
+    if(action==='brakeOff')fleetData[id]&&(fleetData[id].brake=false);
+    if(action==='light')fleetData[id]&&(fleetData[id].light=!fleetData[id].light);
+    if(action==='mode'){const modes=['ECO','D','S'];if(fleetData[id]){const i=modes.indexOf(fleetData[id].mode);fleetData[id].mode=modes[(i+1)%3];}}
+    renderFleet(fleetData);return;
+  }
+  fetch(SERVER+'/command/'+id,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action})}).catch(()=>{});
+}
+
+function fetchFleet(){
+  if(demoMode){
+    Object.keys(fleetData).forEach(id=>{
+      const d=fleetData[id];
+      if(d.moving){d.speed=Math.max(0,Math.min(16,d.speed+(Math.random()-.5)*1.5));d.battery=Math.max(0,d.battery-.05);}
+      d.lastSeen=Date.now()-Math.floor(Math.random()*2000);
+    });
+    renderFleet(fleetData);
+    document.getElementById('server-dot').style.background='#BA7517';
+    document.getElementById('server-status').textContent='demo mode';
+    return;
+  }
+  fetch(SERVER+'/fleet').then(r=>r.json()).then(fleet=>{
+    fleetData=fleet;
+    demoMode=false;
+    document.getElementById('server-dot').style.background='#1D9E75';
+    document.getElementById('server-status').textContent='live';
+    renderFleet(fleet);
+  }).catch(()=>{
+    if(!demoMode){
+      document.getElementById('server-dot').style.background='#E24B4A';
+      document.getElementById('server-status').textContent='offline';
+    }
+  });
+}
+
+fleetData=JSON.parse(JSON.stringify(DEMO));
+initChart();
+renderFleet(fleetData);
+setInterval(fetchFleet,1500);
+</script>

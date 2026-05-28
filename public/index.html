@@ -3,615 +3,2457 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Scooter Fleet</title>
+<title>ScooterFleet ิว๖ Operations Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-    background: #0f0f0f;
-    color: #ffffff;
-    min-height: 100vh;
-    padding: 16px;
-  }
-  .topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid #2a2a2a;
-  }
-  .brand {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .brand-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
-    background: #185FA5;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #E6F1FB;
-    font-size: 18px;
-  }
-  .brand-name {
-    font-size: 16px;
-    font-weight: 500;
-    color: #ffffff;
-  }
-  .brand-sub {
-    font-size: 12px;
-    color: #666666;
-  }
-  .topbar-right {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .status-indicator {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
-    color: #666666;
-  }
-  .status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #1D9E75;
-  }
-  .status-dot.offline {
-    background: #E24B4A;
-  }
-  h1 {
-    text-align: center;
-    font-size: 16px;
-    font-weight: 500;
-    color: #888888;
-    margin-bottom: 20px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-  }
-  .fleet-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 16px;
-  }
-  .scooter-card {
-    background: #1a1a1a;
-    border-radius: 20px;
-    padding: 20px;
-    border: 1px solid #2a2a2a;
-  }
-  .scooter-card.offline {
-    opacity: 0.5;
-    border-color: #ff444433;
-  }
-  .card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 16px;
-  }
-  .scooter-id {
-    font-size: 18px;
-    font-weight: 600;
-  }
-  .status-badge {
-    font-size: 11px;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-weight: 500;
-  }
-  .status-badge.online {
-    background: #44ff8822;
-    color: #44ff88;
-  }
-  .status-badge.offline {
-    background: #ff444422;
-    color: #ff4444;
-  }
-  .telemetry-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 20px;
-  }
-  .tel-item {
-    text-align: center;
-  }
-  .tel-label {
-    font-size: 10px;
-    color: #666666;
-    text-transform: uppercase;
-    margin-bottom: 4px;
-  }
-  .tel-value {
-    font-size: 20px;
-    font-weight: 600;
-  }
-  .tel-unit {
-    font-size: 10px;
-    color: #444444;
-  }
-  .tel-value.green  { color: #44ff88; }
-  .tel-value.yellow { color: #ffcc00; }
-  .tel-value.red    { color: #ff4444; }
-  .tel-value.blue   { color: #44aaff; }
-  .tel-value.white  { color: #ffffff; }
+*{box-sizing:border-box;margin:0;padding:0}
 
-  .battery-bar {
-    width: 100%;
-    height: 6px;
-    background: #2a2a2a;
-    border-radius: 3px;
-    margin-bottom: 20px;
-    overflow: hidden;
-  }
-  .battery-fill {
-    height: 100%;
-    transition: width 0.5s ease;
-  }
+:root{
+  --navy:#0B1120;
+  --navy-2:#111827;
+  --navy-3:#1C2A3A;
+  --navy-4:#243045;
+  --navy-5:#2E3D52;
+  --accent:#3B82F6;
+  --accent-dim:#1E3A5F;
+  --green:#10B981;
+  --green-dim:#064E3B;
+  --amber:#F59E0B;
+  --amber-dim:#451A03;
+  --red:#EF4444;
+  --red-dim:#450A0A;
+  --blue-muted:#60A5FA;
+  --text-primary:#F1F5F9;
+  --text-secondary:#94A3B8;
+  --text-tertiary:#475569;
+  --border:#1E293B;
+  --border-light:#243447;
+  --font:'DM Sans',sans-serif;
+  --mono:'DM Mono',monospace;
+  --radius:10px;
+  --radius-lg:14px;
+}
 
-  .controls {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-  .btn {
-    background: #1a1a1a;
-    border: 1px solid #2a2a2a;
-    border-radius: 12px;
-    padding: 12px 8px;
-    color: #ffffff;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.1s;
-  }
-  .btn:active { transform: scale(0.95); }
-  .btn.full { grid-column: span 2; }
-  .btn.danger  { border-color: #ff444466; color: #ff4444; }
-  .btn.success { border-color: #44ff8866; color: #44ff88; }
-  .btn.blue    { border-color: #44aaff66; color: #44aaff; }
-  .btn.yellow  { border-color: #ffcc0066; color: #ffcc00; }
-  .btn-icon { font-size: 16px; margin-bottom: 4px; }
+.light-mode{
+  --navy:#FFFFFF;
+  --navy-2:#F8FAFC;
+  --navy-3:#F1F5F9;
+  --navy-4:#E2E8F0;
+  --navy-5:#CBD5E1;
+  --accent:#3B82F6;
+  --accent-dim:#DBEAFE;
+  --green:#10B981;
+  --green-dim:#D1FAE5;
+  --amber:#F59E0B;
+  --amber-dim:#FEF3C7;
+  --red:#EF4444;
+  --red-dim:#FEE2E2;
+  --blue-muted:#60A5FA;
+  --text-primary:#1E293B;
+  --text-secondary:#64748B;
+  --text-tertiary:#94A3B8;
+  --border:#E2E8F0;
+  --border-light:#CBD5E1;
+}
 
-  .btn.active-green  { background: #44ff8822; border-color: #44ff88; color: #44ff88; }
-  .btn.active-red    { background: #ff444422; border-color: #ff4444; color: #ff4444; }
-  .btn.active-yellow { background: #ffcc0022; border-color: #ffcc00; color: #ffcc00; }
+html,body{height:100%;background:var(--navy);color:var(--text-primary);font-family:var(--font);font-size:14px;line-height:1.5}
 
-  .last-seen {
-    text-align: center;
-    font-size: 10px;
-    color: #333333;
-    margin-top: 12px;
-  }
-  .no-scooters {
-    text-align: center;
-    color: #333333;
-    font-size: 14px;
-    margin-top: 60px;
-  }
-  .summary-section {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-    margin-bottom: 24px;
-  }
-  .summary-card {
-    background: #1a1a1a;
-    border-radius: 12px;
-    padding: 16px;
-    border: 1px solid #2a2a2a;
-  }
-  .summary-label {
-    font-size: 11px;
-    color: #666666;
-    text-transform: uppercase;
-    margin-bottom: 8px;
-  }
-  .summary-value {
-    font-size: 24px;
-    font-weight: 600;
-    color: #ffffff;
-  }
-  .chart-section {
-    background: #1a1a1a;
-    border-radius: 12px;
-    padding: 16px;
-    border: 1px solid #2a2a2a;
-    margin-bottom: 24px;
-  }
-  .chart-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-  }
-  .chart-title {
-    font-size: 14px;
-    font-weight: 500;
-    color: #ffffff;
-  }
-  .history-section {
-    margin-top: 16px;
-    border-top: 1px solid #2a2a2a;
-    padding-top: 12px;
-  }
-  .history-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-  }
-  .history-title {
-    font-size: 11px;
-    color: #666666;
-    text-transform: uppercase;
-  }
-  .history-toggle {
-    background: none;
-    border: none;
-    color: #44aaff;
-    font-size: 10px;
-    cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 4px;
-  }
-  .history-toggle:hover {
-    background: #44aaff22;
-  }
-  .history-list {
-    max-height: 150px;
-    overflow-y: auto;
-    font-size: 10px;
-  }
-  .history-item {
-    display: grid;
-    grid-template-columns: 60px 1fr 1fr 1fr;
-    gap: 8px;
-    padding: 6px 8px;
-    border-radius: 4px;
-    margin-bottom: 4px;
-    background: #1a1a1a;
-  }
-  .history-item:hover {
-    background: #222222;
-  }
-  .history-time {
-    color: #666666;
-  }
-  .history-value {
-    color: #888888;
-  }
+/* ิ๖วิ๖ว Layout ิ๖วิ๖ว */
+.shell{display:grid;grid-template-columns:220px 1fr;grid-template-rows:auto 1fr;min-height:100vh}
+.topbar{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;background:var(--navy-2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.sidebar{background:var(--navy-2);border-right:1px solid var(--border);padding:16px 0;display:flex;flex-direction:column;gap:2px}
+.main{background:var(--navy);padding:28px 32px;overflow-y:auto;min-height:0}
+
+/* ิ๖วิ๖ว Topbar ิ๖วิ๖ว */
+.brand{display:flex;align-items:center;gap:10px}
+.brand-mark{width:30px;height:30px;border-radius:8px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px}
+.brand-name{font-size:15px;font-weight:600;letter-spacing:-.2px}
+.brand-tag{font-size:11px;color:var(--text-tertiary);font-family:var(--mono);margin-left:2px}
+.topbar-right{display:flex;align-items:center;gap:16px}
+.conn-pill{display:flex;align-items:center;gap:6px;padding:4px 12px;background:var(--navy-3);border:1px solid var(--border-light);border-radius:20px;font-size:11px;font-family:var(--mono);color:var(--text-secondary)}
+.conn-dot{width:6px;height:6px;border-radius:50%;background:var(--amber);flex-shrink:0}
+.conn-dot.live{background:var(--green)}
+.conn-dot.err{background:var(--red)}
+
+/* ิ๖วิ๖ว Sidebar nav ิ๖วิ๖ว */
+.nav-section{padding:0 12px;margin-bottom:4px}
+.nav-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary);padding:10px 10px 6px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius);cursor:pointer;font-size:13px;font-weight:500;color:var(--text-secondary);transition:all .15s;border:1px solid transparent;position:relative}
+.nav-item:hover{background:var(--navy-3);color:var(--text-primary)}
+.nav-item.active{background:var(--accent-dim);color:var(--accent);border-color:rgba(59,130,246,.2)}
+.nav-item i{font-size:16px;flex-shrink:0}
+.nav-badge{margin-left:auto;font-size:10px;font-weight:600;background:var(--red);color:#fff;padding:1px 7px;border-radius:20px;line-height:1.6}
+.nav-badge.info{background:var(--accent)}
+.sidebar-footer{margin-top:auto;padding:16px 12px;border-top:1px solid var(--border)}
+.server-addr{font-size:10px;font-family:var(--mono);color:var(--text-tertiary);padding:6px 8px;background:var(--navy-3);border-radius:6px;word-break:break-all}
+
+/* ิ๖วิ๖ว Page header ิ๖วิ๖ว */
+.page-hd{margin-bottom:24px;display:flex;align-items:flex-end;justify-content:space-between}
+.page-title{font-size:22px;font-weight:600;letter-spacing:-.4px}
+.page-sub{font-size:13px;color:var(--text-secondary);margin-top:2px}
+.page-actions{display:flex;gap:8px}
+
+/* ิ๖วิ๖ว Stat cards ิ๖วิ๖ว */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.stat{background:var(--navy-2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px 20px;position:relative;overflow:hidden}
+.stat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent-color,var(--border))}
+.stat.green::before{--accent-color:var(--green)}
+.stat.amber::before{--accent-color:var(--amber)}
+.stat.red::before{--accent-color:var(--red)}
+.stat.blue::before{--accent-color:var(--accent)}
+.stat-label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.stat-val{font-size:32px;font-weight:600;letter-spacing:-.5px;line-height:1}
+.stat-sub{font-size:12px;color:var(--text-secondary);margin-top:6px}
+
+/* ิ๖วิ๖ว Buttons ิ๖วิ๖ว */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius);font-size:13px;font-weight:500;font-family:var(--font);cursor:pointer;transition:all .15s;border:1px solid transparent}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary:hover{opacity:.9}
+.btn-ghost{background:transparent;color:var(--text-secondary);border-color:var(--border-light)}
+.btn-ghost:hover{background:var(--navy-3);color:var(--text-primary)}
+.btn-danger{background:rgba(239,68,68,.1);color:var(--red);border-color:rgba(239,68,68,.25)}
+.btn-danger:hover{background:rgba(239,68,68,.18)}
+.btn-success{background:rgba(16,185,129,.1);color:var(--green);border-color:rgba(16,185,129,.25)}
+.btn-success:hover{background:rgba(16,185,129,.18)}
+.btn-amber{background:rgba(245,158,11,.1);color:var(--amber);border-color:rgba(245,158,11,.25)}
+.btn-amber:hover{background:rgba(245,158,11,.18)}
+.btn-info{background:rgba(96,165,250,.1);color:var(--blue-muted);border-color:rgba(96,165,250,.25)}
+.btn-info:hover{background:rgba(96,165,250,.18)}
+.btn i{font-size:14px}
+
+/* ิ๖วิ๖ว Section card ิ๖วิ๖ว */
+.card{background:var(--navy-2);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:20px}
+.card-hd{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)}
+.card-title{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+.card-title i{font-size:16px;color:var(--accent)}
+.card-body{padding:20px}
+
+/* ิ๖วิ๖ว Broadcast ิ๖วิ๖ว */
+.bc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.bc-action{background:var(--navy-3);border:1px solid var(--border-light);border-radius:var(--radius);padding:16px 18px;cursor:pointer;transition:all .15s;font-family:var(--font);text-align:left;display:flex;flex-direction:column;gap:6px}
+.bc-action:hover{border-color:var(--border);background:var(--navy-4)}
+.bc-action:active{transform:scale(.98)}
+.bc-action.red:hover{border-color:rgba(239,68,68,.4)}
+.bc-action.green:hover{border-color:rgba(16,185,129,.4)}
+.bc-action.amber:hover{border-color:rgba(245,158,11,.4)}
+.bc-action.blue:hover{border-color:rgba(59,130,246,.4)}
+.bc-icon{font-size:20px;margin-bottom:4px}
+.bc-icon.red{color:var(--red)}
+.bc-icon.green{color:var(--green)}
+.bc-icon.amber{color:var(--amber)}
+.bc-icon.blue{color:var(--blue-muted)}
+.bc-name{font-size:13px;font-weight:600;color:var(--text-primary)}
+.bc-desc{font-size:11px;color:var(--text-secondary)}
+
+/* ิ๖วิ๖ว Filter / sort ิ๖วิ๖ว */
+.filter-row{display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.filter-pill{font-size:12px;font-weight:500;padding:5px 14px;border-radius:20px;border:1px solid var(--border-light);background:transparent;color:var(--text-secondary);cursor:pointer;font-family:var(--font);transition:all .12s}
+.filter-pill:hover{border-color:var(--border);color:var(--text-primary)}
+.filter-pill.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.sort-sel{font-size:12px;font-weight:500;padding:5px 12px;border-radius:20px;border:1px solid var(--border-light);background:var(--navy-2);color:var(--text-secondary);cursor:pointer;font-family:var(--font);outline:none;margin-left:auto}
+.sort-sel:focus{border-color:var(--accent)}
+
+/* ิ๖วิ๖ว Fleet grid ิ๖วิ๖ว */
+.fleet-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+
+/* ิ๖วิ๖ว Scooter card ิ๖วิ๖ว */
+.scard{background:var(--navy-2);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;transition:border-color .2s,box-shadow .2s}
+.scard:hover{border-color:var(--border-light);box-shadow:0 4px 24px rgba(0,0,0,.3)}
+.scard.offline{opacity:.55}
+.scard.warn{border-color:rgba(245,158,11,.35)}
+.scard.crit{border-color:rgba(239,68,68,.4);box-shadow:0 0 0 1px rgba(239,68,68,.1)}
+
+.scard-hd{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 12px}
+.scard-id{display:flex;align-items:center;gap:10px}
+.scard-icon{width:32px;height:32px;border-radius:8px;background:var(--accent-dim);display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:16px;flex-shrink:0}
+.scard-name{font-size:14px;font-weight:600;letter-spacing:-.1px}
+.scard-ip{font-size:10px;color:var(--text-tertiary);font-family:var(--mono);margin-top:1px}
+.badges{display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.badge{font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px;letter-spacing:.03em}
+.badge-on{background:rgba(16,185,129,.15);color:var(--green);border:1px solid rgba(16,185,129,.2)}
+.badge-off{background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.2)}
+.badge-moving{background:rgba(59,130,246,.12);color:var(--blue-muted);border:1px solid rgba(59,130,246,.2)}
+.badge-low{background:rgba(245,158,11,.12);color:var(--amber);border:1px solid rgba(245,158,11,.2)}
+
+.divider{height:1px;background:var(--border);margin:0}
+
+/* Telemetry grid */
+.tel-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0}
+.tel-cell{padding:12px 14px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);text-align:center}
+.tel-cell:nth-child(3n){border-right:none}
+.tel-cell:nth-child(4),.tel-cell:nth-child(5),.tel-cell:nth-child(6){border-bottom:none}
+.tel-lbl{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:5px}
+.tel-val{font-size:19px;font-weight:600;letter-spacing:-.3px;line-height:1}
+.tel-unit{font-size:10px;color:var(--text-tertiary);margin-top:3px;font-family:var(--mono)}
+.tv-speed{color:var(--text-primary)}
+.tv-hi{color:var(--green)}
+.tv-mid{color:var(--amber)}
+.tv-lo{color:var(--red)}
+.tv-mode{color:var(--blue-muted)}
+.tv-volt{color:#A78BFA}
+.tv-brake-on{color:var(--red)}
+.tv-brake-off{color:var(--green)}
+.tv-light-on{color:var(--amber)}
+.tv-light-off{color:var(--text-tertiary)}
+
+/* Battery bar */
+.batt-wrap{padding:10px 16px 0}
+.batt-header{display:flex;justify-content:space-between;margin-bottom:5px;font-size:11px;font-weight:500}
+.batt-label{color:var(--text-secondary)}
+.batt-pct{font-family:var(--mono)}
+.batt-track{height:5px;background:var(--navy-3);border-radius:3px;overflow:hidden}
+.batt-fill{height:100%;border-radius:3px;transition:width .6s ease}
+
+/* Controls */
+.ctrl-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:12px 14px 14px}
+.ctrl-btn{background:var(--navy-3);border:1px solid var(--border-light);border-radius:8px;padding:9px 10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;font-weight:500;color:var(--text-secondary);transition:all .15s;font-family:var(--font)}
+.ctrl-btn:hover{background:var(--navy-4);border-color:var(--border);color:var(--text-primary)}
+.ctrl-btn:active{transform:scale(.97)}
+.ctrl-btn.span2{grid-column:span 2}
+.ctrl-btn.danger{border-color:rgba(239,68,68,.3);color:var(--red)}
+.ctrl-btn.danger:hover{background:rgba(239,68,68,.08)}
+.ctrl-btn.success{border-color:rgba(16,185,129,.3);color:var(--green)}
+.ctrl-btn.success:hover{background:rgba(16,185,129,.08)}
+.ctrl-btn.info{border-color:rgba(96,165,250,.3);color:var(--blue-muted)}
+.ctrl-btn.info:hover{background:rgba(96,165,250,.08)}
+.ctrl-btn.warn{border-color:rgba(245,158,11,.3);color:var(--amber)}
+.ctrl-btn.warn:hover{background:rgba(245,158,11,.08)}
+.ctrl-btn i{font-size:13px}
+.lastseen{text-align:center;font-size:10px;color:var(--text-tertiary);padding:0 14px 10px;font-family:var(--mono)}
+
+/* ิ๖วิ๖ว Alerts ิ๖วิ๖ว */
+.alert-item{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.alert-item:last-child{border-bottom:none}
+.alert-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.alert-dot.danger{background:var(--red)}
+.alert-dot.warn{background:var(--amber)}
+.alert-dot.info{background:var(--accent)}
+.alert-body{flex:1;min-width:0}
+.alert-msg{font-size:13px;font-weight:500;color:var(--text-primary)}
+.alert-time{font-size:11px;color:var(--text-tertiary);font-family:var(--mono);margin-top:2px}
+.alert-type-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;flex-shrink:0;align-self:center}
+.alert-type-badge.danger{background:rgba(239,68,68,.12);color:var(--red)}
+.alert-type-badge.warn{background:rgba(245,158,11,.12);color:var(--amber)}
+.alert-type-badge.info{background:rgba(59,130,246,.12);color:var(--blue-muted)}
+.alerts-empty{text-align:center;padding:32px;color:var(--text-tertiary);font-size:13px}
+
+/* ิ๖วิ๖ว Chart ิ๖วิ๖ว */
+.chart-wrap{position:relative;width:100%;height:160px}
+
+/* ิ๖วิ๖ว No results ิ๖วิ๖ว */
+.no-results{grid-column:1/-1;text-align:center;padding:48px 24px;color:var(--text-tertiary)}
+.no-results i{font-size:36px;display:block;margin-bottom:10px;opacity:.4}
+.no-results p{font-size:13px}
+
+/* ิ๖วิ๖ว Flash ิ๖วิ๖ว */
+.cmd-flash{animation:flash .4s ease}
+@keyframes flash{0%{opacity:.35}100%{opacity:1}}
+.alert-in{animation:aIn .25s ease}
+@keyframes aIn{0%{opacity:0;transform:translateY(-5px)}100%{opacity:1;transform:translateY(0)}}
+
+/* ิ๖วิ๖ว Page transitions ิ๖วิ๖ว */
+.page{display:none}
+.page.active{display:block;animation:pageIn .2s ease}
+@keyframes pageIn{0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
+
+/* ิ๖วิ๖ว Login Page ิ๖วิ๖ว */
+.login-page{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--navy);display:flex;align-items:center;justify-content:center;z-index:1000}
+.login-card{background:var(--navy-2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:40px;width:400px;max-width:90%}
+.login-logo{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:32px}
+.login-logo .brand-mark{width:48px;height:48px;border-radius:12px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px}
+.login-title{text-align:center;font-size:24px;font-weight:600;color:var(--text-primary);margin-bottom:8px}
+.login-sub{text-align:center;font-size:13px;color:var(--text-secondary);margin-bottom:32px}
+.login-form{display:flex;flex-direction:column;gap:16px}
+.login-input{padding:12px 16px;background:var(--navy-3);border:1px solid var(--border-light);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none;transition:border-color .2s}
+.login-input:focus{border-color:var(--accent)}
+.login-btn{padding:12px 16px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:500;cursor:pointer;transition:background .2s}
+.login-btn:hover{background:#2563EB}
+.login-error{text-align:center;color:var(--red);font-size:13px;margin-top:16px;min-height:20px}
+.app-shell{display:none}
+.app-shell.visible{display:grid}
 </style>
 </head>
 <body>
 
-<div class="topbar">
-  <div class="brand">
-    <div class="brand-icon">โก</div>
-    <div>
-      <div class="brand-name">Scooter Fleet</div>
-      <div class="brand-sub">Fleet Management Dashboard</div>
+<!-- Login Page -->
+<div id="login-page" class="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="brand-mark"><i class="ti ti-bolt"></i></div>
+      <div>
+        <div class="login-title">ScooterFleet</div>
+        <div class="login-sub">Operations Console</div>
+      </div>
     </div>
-  </div>
-  <div class="topbar-right">
-    <div class="status-indicator">
-      <div class="status-dot" id="status-dot"></div>
-      <span id="status-text">Connecting...</span>
-    </div>
+    <form class="login-form" onsubmit="handleAppLogin(event)">
+      <input type="text" id="login-username" class="login-input" placeholder="Username" required autocomplete="username">
+      <input type="password" id="login-password" class="login-input" placeholder="Password" required autocomplete="current-password">
+      <button type="submit" class="login-btn">Sign In</button>
+    </form>
+    <div id="login-error" class="login-error"></div>
   </div>
 </div>
 
-<div class="summary-section">
-  <div class="summary-card">
-    <div class="summary-label">Total Scooters</div>
-    <div class="summary-value" id="summary-total">0</div>
-  </div>
-  <div class="summary-card">
-    <div class="summary-label">Online</div>
-    <div class="summary-value" id="summary-online" style="color: #44ff88;">0</div>
-  </div>
-  <div class="summary-card">
-    <div class="summary-label">Avg Battery</div>
-    <div class="summary-value" id="summary-battery">0%</div>
-  </div>
-  <div class="summary-card">
-    <div class="summary-label">Locked</div>
-    <div class="summary-value" id="summary-locked" style="color: #ff4444;">0</div>
-  </div>
-</div>
-<div class="chart-section">
-  <div class="chart-header">
-    <div class="chart-title">Battery Levels</div>
-  </div>
-  <canvas id="batteryChart" height="200"></canvas>
-</div>
-<div class="fleet-grid" id="fleet"></div>
+<!-- Main App -->
+<div id="app-shell" class="shell app-shell">
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark"><i class="ti ti-bolt"></i></div>
+      <span class="brand-name">ScooterFleet</span>
+      <span class="brand-tag">v2.0</span>
+    </div>
+    <div class="topbar-right">
+      <div class="conn-pill">
+        <span class="conn-dot" id="conn-dot"></span>
+        <span id="conn-status">connectingิวช</span>
+        <span style="color:var(--text-tertiary);margin-left:4px" id="conn-addr">10.104.13.197:3000</span>
+      </div>
+      <button id="auth-btn" class="btn btn-ghost" onclick="handleAppLogout()" style="margin-left:12px;padding:6px 12px;font-size:12px">
+        <i class="ti ti-logout"></i> Logout
+      </button>
+      <button class="btn btn-ghost" onclick="toggleTheme()" style="margin-left:8px;padding:6px 12px;font-size:12px">
+        <i class="ti ti-sun" id="theme-icon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="nav-section">
+      <div class="nav-label">Operations</div>
+      <div class="nav-item active" data-page="fleet" onclick="goTo('fleet')">
+        <i class="ti ti-layout-grid"></i> Fleet overview
+      </div>
+      <div class="nav-item" data-page="broadcast" onclick="goTo('broadcast')">
+        <i class="ti ti-broadcast"></i> Broadcast
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Monitoring</div>
+      <div class="nav-item" data-page="alerts" onclick="goTo('alerts')">
+        <i class="ti ti-bell"></i> Alerts
+        <span class="nav-badge" id="nav-alert-badge" style="display:none">0</span>
+      </div>
+      <div class="nav-item" data-page="battery" onclick="goTo('battery')">
+        <i class="ti ti-battery-charging"></i> Battery
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Fleet Intelligence</div>
+      <div class="nav-item" data-page="analytics" onclick="goTo('analytics')">
+        <i class="ti ti-chart-line"></i> History & Analytics
+      </div>
+      <div class="nav-item" data-page="registry" onclick="goTo('registry')">
+        <i class="ti ti-users"></i> Fleet Registry
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Phase 3 (GPS)</div>
+      <div class="nav-item" data-page="map" onclick="goTo('map')">
+        <i class="ti ti-map"></i> Live Map
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="server-addr" id="sidebar-addr">http://10.104.13.197:3000</div>
+    </div>
+  </nav>
+
+  <!-- Main content -->
+  <main class="main">
+
+    <!-- ิ๖วิ๖ว PAGE: Fleet overview ิ๖วิ๖ว -->
+    <div class="page active" id="page-fleet">
+      <div class="page-hd">
+        <div>
+          <div class="page-title">Fleet overview</div>
+          <div class="page-sub">Live telemetry for all connected scooters</div>
+        </div>
+        <div class="page-actions">
+          <select class="sort-sel" id="sort-select" onchange="setSortAndRender()" aria-label="Sort scooters">
+            <option value="id">Sort: ID</option>
+            <option value="battery_asc">Battery ิๅๆ</option>
+            <option value="battery_desc">Battery ิๅ๔</option>
+            <option value="speed_desc">Speed ิๅ๔</option>
+            <option value="status">Status</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat blue">
+          <div class="stat-label"><i class="ti ti-device-mobile" style="font-size:13px"></i> Total</div>
+          <div class="stat-val" id="sum-total">ิว๖</div>
+          <div class="stat-sub">scooters in fleet</div>
+        </div>
+        <div class="stat green">
+          <div class="stat-label"><i class="ti ti-wifi" style="font-size:13px"></i> Online</div>
+          <div class="stat-val" id="sum-online" style="color:var(--green)">ิว๖</div>
+          <div class="stat-sub">connected now</div>
+        </div>
+        <div class="stat amber">
+          <div class="stat-label"><i class="ti ti-battery-2" style="font-size:13px"></i> Avg battery</div>
+          <div class="stat-val" id="sum-batt">ิว๖</div>
+          <div class="stat-sub">fleet average</div>
+        </div>
+        <div class="stat red">
+          <div class="stat-label"><i class="ti ti-lock" style="font-size:13px"></i> Locked</div>
+          <div class="stat-val" id="sum-locked">ิว๖</div>
+          <div class="stat-sub">brake active</div>
+        </div>
+      </div>
+
+      <div class="filter-row">
+        <span style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-tertiary);flex-shrink:0">Filter</span>
+        <button class="filter-pill active" data-filter="all" onclick="setFilter('all')">All</button>
+        <button class="filter-pill" data-filter="online" onclick="setFilter('online')">Online</button>
+        <button class="filter-pill" data-filter="offline" onclick="setFilter('offline')">Offline</button>
+        <button class="filter-pill" data-filter="moving" onclick="setFilter('moving')">Moving</button>
+        <button class="filter-pill" data-filter="locked" onclick="setFilter('locked')">Locked</button>
+        <button class="filter-pill" data-filter="low_batt" onclick="setFilter('low_batt')">Low battery</button>
+      </div>
+
+      <div class="fleet-grid" id="fleet-grid"></div>
+    </div>
+
+    <!-- ิ๖วิ๖ว PAGE: Broadcast ิ๖วิ๖ว -->
+    <div class="page" id="page-broadcast">
+      <div class="page-hd">
+        <div>
+          <div class="page-title">Broadcast controls</div>
+          <div class="page-sub">Send a command to every scooter in the fleet simultaneously</div>
+        </div>
+      </div>
+
+      <div class="card" style="max-width:600px">
+        <div class="card-hd">
+          <span class="card-title"><i class="ti ti-lock"></i> Lock / Unlock</span>
+        </div>
+        <div class="card-body">
+          <div class="bc-grid">
+            <button class="bc-action red" onclick="broadcastCmd('brakeOn')">
+              <i class="ti ti-lock bc-icon red" aria-hidden="true"></i>
+              <span class="bc-name">Lock ALL</span>
+              <span class="bc-desc">Engage brake on every online scooter</span>
+            </button>
+            <button class="bc-action green" onclick="broadcastCmd('brakeOff')">
+              <i class="ti ti-lock-open bc-icon green" aria-hidden="true"></i>
+              <span class="bc-name">Unlock ALL</span>
+              <span class="bc-desc">Release brake on every online scooter</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="max-width:600px">
+        <div class="card-hd">
+          <span class="card-title"><i class="ti ti-settings"></i> Riding settings</span>
+        </div>
+        <div class="card-body">
+          <div class="bc-grid">
+            <button class="bc-action amber" onclick="broadcastCmd('mode')">
+              <i class="ti ti-bolt bc-icon amber" aria-hidden="true"></i>
+              <span class="bc-name">Cycle mode ALL</span>
+              <span class="bc-desc">Advance ECO ิๅฦ D ิๅฦ S on all units</span>
+            </button>
+            <button class="bc-action blue" onclick="broadcastCmd('light')">
+              <i class="ti ti-bulb bc-icon blue" aria-hidden="true"></i>
+              <span class="bc-name">Toggle lights ALL</span>
+              <span class="bc-desc">Flip headlight state fleet-wide</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="max-width:600px">
+        <div class="card-hd">
+          <span class="card-title"><i class="ti ti-history"></i> Broadcast log</span>
+        </div>
+        <div class="card-body" style="padding:0 20px">
+          <div id="bc-log"><div class="alerts-empty">No broadcast commands sent yet</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ิ๖วิ๖ว PAGE: Alerts ิ๖วิ๖ว -->
+    <div class="page" id="page-alerts">
+      <div class="page-hd">
+        <div>
+          <div class="page-title">Alerts</div>
+          <div class="page-sub">Battery warnings, connectivity events, and system notices</div>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-ghost" onclick="clearAlerts()"><i class="ti ti-trash"></i> Clear log</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd">
+          <span class="card-title"><i class="ti ti-bell-ringing"></i> Event log</span>
+          <span id="alert-count-badge" style="font-size:11px;font-weight:600;color:var(--text-secondary)">0 events</span>
+        </div>
+        <div style="padding:0 20px">
+          <div id="alert-list"><div class="alerts-empty">No alerts ิว๖ all systems normal</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ิ๖วิ๖ว PAGE: Battery ิ๖วิ๖ว -->
+    <div class="page" id="page-battery">
+      <div class="page-hd">
+        <div>
+          <div class="page-title">Battery status</div>
+          <div class="page-sub">Real-time charge levels across the fleet</div>
+        </div>
+      </div>
+
+      <div class="stat-row" style="grid-template-columns:repeat(3,1fr)">
+        <div class="stat green">
+          <div class="stat-label"><i class="ti ti-battery-4" style="font-size:13px"></i> Healthy</div>
+          <div class="stat-val" id="batt-hi-count" style="color:var(--green)">ิว๖</div>
+          <div class="stat-sub">above 50%</div>
+        </div>
+        <div class="stat amber">
+          <div class="stat-label"><i class="ti ti-battery-2" style="font-size:13px"></i> Low</div>
+          <div class="stat-val" id="batt-mid-count" style="color:var(--amber)">ิว๖</div>
+          <div class="stat-sub">21 ิว๔ 50%</div>
+        </div>
+        <div class="stat red">
+          <div class="stat-label"><i class="ti ti-battery-1" style="font-size:13px"></i> Critical</div>
+          <div class="stat-val" id="batt-lo-count" style="color:var(--red)">ิว๖</div>
+          <div class="stat-sub">20% or below</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd">
+          <span class="card-title"><i class="ti ti-chart-bar"></i> Charge levels</span>
+          <div id="chart-legend" style="display:flex;gap:14px"></div>
+        </div>
+        <div class="card-body">
+          <div class="chart-wrap">
+            <canvas id="batt-chart" aria-label="Battery percentage bar chart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd">
+          <span class="card-title"><i class="ti ti-list-details"></i> Per-scooter detail</span>
+        </div>
+        <div id="batt-detail-list" style="padding:0 20px"></div>
+      </div>
+    </div>
+
+    <!-- ิ๖วิ๖ว PAGE: History & Analytics ิ๖วิ๖ว -->
+    <div class="page" id="page-analytics">
+      <div class="page-hd">
+        <div>
+          <div class="page-title">History & Analytics</div>
+          <div class="page-sub">Ride sessions, battery trends, and usage patterns</div>
+        </div>
+      </div>
+
+      <div class="stat-row" style="grid-template-columns:repeat(4,1fr)">
+        <div class="stat blue">
+          <div class="stat-label"><i class="ti ti-route" style="font-size:13px"></i> Total rides</div>
+          <div class="stat-val" id="analytics-total-rides">ิว๖</div>
+          <div class="stat-sub">all time</div>
+        </div>
+        <div class="stat green">
+          <div class="stat-label"><i class="ti ti-clock" style="font-size:13px"></i> Avg duration</div>
+          <div class="stat-val" id="analytics-avg-duration">ิว๖</div>
+          <div class="stat-sub">minutes per ride</div>
+        </div>
+        <div class="stat amber">
+          <div class="stat-label"><i class="ti ti-ruler" style="font-size:13px"></i> Total distance</div>
+          <div class="stat-val" id="analytics-total-distance">ิว๖</div>
+          <div class="stat-sub">miles traveled</div>
+        </div>
+        <div class="stat red">
+          <div class="stat-label"><i class="ti ti-heart-pulse" style="font-size:13px"></i> Health issues</div>
+          <div class="stat-val" id="analytics-health-issues">ิว๖</div>
+          <div class="stat-sub">scooters flagged</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd">
+          <span class="card-title"><i class="ti ti-list-details"></i> Recent ride sessions</span>
+          <select id="analytics-scooter-select" onchange="renderAnalyticsPage()" style="font-size:12px;padding:4px 8px;border-radius:6px;border:1px solid var(--border-light);background:var(--navy-2);color:var(--text-secondary)">
+            <option value="all">All scooters</option>
+          </select>
+        </div>
+        <div id="ride-sessions-list" style="padding:0 20px"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd">
+          <span class="card-title"><i class="ti ti-chart-line"></i> Battery discharge tracking</span>
+          <select id="batt-history-scooter-select" onchange="renderBatteryHistoryChart()" style="font-size:12px;padding:4px 8px;border-radius:6px;border:1px solid var(--border-light);background:var(--navy-2);color:var(--text-secondary)">
+            <option value="">Select scooter</option>
+          </select>
+        </div>
+        <div class="card-body">
+          <div class="chart-wrap">
+            <canvas id="batt-history-chart" aria-label="Battery discharge over time"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd">
+          <span class="card-title"><i class="ti ti-activity"></i> Usage heatmap</span>
+          <select id="heatmap-scooter-select" onchange="renderUsageHeatmap()" style="font-size:12px;padding:4px 8px;border-radius:6px;border:1px solid var(--border-light);background:var(--navy-2);color:var(--text-secondary)">
+            <option value="">Select scooter</option>
+          </select>
+        </div>
+        <div class="card-body">
+          <div class="chart-wrap">
+            <canvas id="usage-heatmap-chart" aria-label="Usage by hour of day"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd">
+          <span class="card-title"><i class="ti ti-heart-pulse"></i> Per-scooter health scores</span>
+        </div>
+        <div id="health-scores-list" style="padding:0 20px"></div>
+      </div>
+    </div>
+
+    <!-- ิ๖วิ๖ว PAGE: Fleet Registry ิ๖วิ๖ว -->
+    <div class="page" id="page-registry">
+      <div class="page-hd">
+        <div>
+          <div class="page-title">Fleet Registry</div>
+          <div class="page-sub">Manage scooter names, status tags, and settings</div>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-primary" onclick="openRegistryModal()"><i class="ti ti-plus"></i> Add scooter</button>
+          <button id="export-btn" class="btn btn-ghost" onclick="exportAllDataCSV()" style="display:none"><i class="ti ti-download"></i> Export data</button>
+        </div>
+      </div>
+
+      <div class="stat-row" style="grid-template-columns:repeat(4,1fr)">
+        <div class="stat green">
+          <div class="stat-label"><i class="ti ti-check-circle" style="font-size:13px"></i> Active</div>
+          <div class="stat-val" id="registry-active">ิว๖</div>
+          <div class="stat-sub">in service</div>
+        </div>
+        <div class="stat amber">
+          <div class="stat-label"><i class="ti ti-charging" style="font-size:13px"></i> Charging</div>
+          <div class="stat-val" id="registry-charging">ิว๖</div>
+          <div class="stat-sub">plugged in</div>
+        </div>
+        <div class="stat red">
+          <div class="stat-label"><i class="ti ti-wrench" style="font-size:13px"></i> Maintenance</div>
+          <div class="stat-val" id="registry-maintenance">ิว๖</div>
+          <div class="stat-sub">out of service</div>
+        </div>
+        <div class="stat blue">
+          <div class="stat-label"><i class="ti ti-bolt" style="font-size:13px"></i> Speed limited</div>
+          <div class="stat-val" id="registry-speed-limited">ิว๖</div>
+          <div class="stat-sub">mode locked</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd">
+          <span class="card-title"><i class="ti ti-list"></i> Registered scooters</span>
+        </div>
+        <div id="registry-list" style="padding:0 20px"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd">
+          <span class="card-title"><i class="ti ti-user"></i> Rider accounts</span>
+          <button class="btn btn-primary" onclick="addRider()" style="padding:6px 12px;font-size:12px"><i class="ti ti-plus"></i> Add rider</button>
+        </div>
+        <div id="riders-list" style="padding:0 20px"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd">
+          <span class="card-title"><i class="ti ti-file-text"></i> Audit Log</span>
+        </div>
+        <div id="audit-log-list" style="padding:0 20px"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd">
+          <span class="card-title"><i class="ti ti-currency-dollar"></i> Pricing Settings</span>
+        </div>
+        <div style="padding:20px">
+          <div style="margin-bottom:16px">
+            <label style="display:block;font-size:12px;color:var(--text-secondary);margin-bottom:8px">Rate per minute (${pricingConfig.currency})</label>
+            <input type="number" id="pricing-rate" value="${pricingConfig.ratePerMinute}" step="0.01" min="0" onchange="updatePricing('ratePerMinute', this.value)" style="width:100%;padding:8px 12px;background:var(--navy-3);border:1px solid var(--border-light);border-radius:6px;color:var(--text-primary);font-size:13px">
+          </div>
+          <div style="margin-bottom:16px">
+            <label style="display:block;font-size:12px;color:var(--text-secondary);margin-bottom:8px">Base fee (${pricingConfig.currency})</label>
+            <input type="number" id="pricing-base" value="${pricingConfig.baseFee}" step="0.01" min="0" onchange="updatePricing('baseFee', this.value)" style="width:100%;padding:8px 12px;background:var(--navy-3);border:1px solid var(--border-light);border-radius:6px;color:var(--text-primary);font-size:13px">
+          </div>
+          <div style="font-size:11px;color:var(--text-tertiary)">
+            Pricing applies to all rides. Total cost = base fee + (rate per minute +๙ duration)
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd">
+          <span class="card-title"><i class="ti ti-wrench"></i> Maintenance Schedule</span>
+          <button class="btn btn-primary" onclick="scheduleMaintenance()" style="padding:6px 12px;font-size:12px"><i class="ti ti-plus"></i> Schedule</button>
+        </div>
+        <div id="maintenance-list" style="padding:0 20px"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd">
+          <span class="card-title"><i class="ti ti-shield"></i> User Roles</span>
+          <button class="btn btn-primary" onclick="addUserRole()" style="padding:6px 12px;font-size:12px"><i class="ti ti-plus"></i> Add user</button>
+        </div>
+        <div id="user-roles-list" style="padding:0 20px"></div>
+      </div>
+    </div>
+
+    <!-- ิ๖วิ๖ว PAGE: Live Map ิ๖วิ๖ว -->
+    <div class="page" id="page-map">
+      <div class="page-hd">
+        <div>
+          <div class="page-title">Live Map</div>
+          <div class="page-sub">Real-time GPS tracking and geofence zones</div>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-ghost" onclick="simulateQRUnlock()"><i class="ti ti-qr-code"></i> Simulate QR unlock</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd">
+          <span class="card-title"><i class="ti ti-map"></i> Fleet Map</span>
+        </div>
+        <div id="map-container" style="height:500px;background:var(--navy-3);border-radius:8px;position:relative;overflow:hidden">
+          <div id="map" style="width:100%;height:100%"></div>
+          <div id="map-legend" style="position:absolute;bottom:16px;left:16px;background:var(--navy-2);padding:12px;border-radius:8px;border:1px solid var(--border);font-size:11px;z-index:1000">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="width:10px;height:10px;border-radius:50%;background:#10B981"></span> Active</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="width:10px;height:10px;border-radius:50%;background:#F59E0B"></span> Charging</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="width:10px;height:10px;border-radius:50%;background:#EF4444"></span> Maintenance</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="width:10px;height:10px;border-radius:50%;background:#60A5FA"></span> Geofence zone</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd">
+          <span class="card-title"><i class="ti ti-map-pin"></i> Geofence Settings</span>
+        </div>
+        <div style="padding:20px">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-primary)">
+              <input type="checkbox" id="geofence-enabled" onchange="toggleGeofence()" ${globalGeofence.enabled ? 'checked' : ''}>
+              Enable geofence
+            </label>
+          </div>
+          <div style="margin-bottom:16px">
+            <label style="display:block;font-size:12px;color:var(--text-secondary);margin-bottom:8px">Radius (meters)</label>
+            <input type="range" id="geofence-radius" min="100" max="2000" step="50" value="${globalGeofence.radius}" onchange="updateGeofenceRadius(this.value)" style="width:100%">
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-tertiary);margin-top:4px">
+              <span>100m</span>
+              <span id="radius-value">${globalGeofence.radius}m</span>
+              <span>2000m</span>
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--text-tertiary)">
+            All scooters must operate within this radius from the center point (${globalGeofence.centerLat.toFixed(4)}, ${globalGeofence.centerLng.toFixed(4)})
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+</div>
+
 <script>
-  const SERVER = '';  // empty = same host
-  let batteryChart = null;
+const SERVER = '';
+let fleetData = {};
+let battChart = null;
+let battHistoryChart = null;
+let usageHeatmapChart = null;
+let demoMode = false;
+let activeFilter = 'all';
+let activeSort = 'id';
+let alertLog = [];
+let bcLog = [];
+let prevStates = {};
 
-  function batteryColor(pct) {
-    if (pct > 50) return '#44ff88';
-    if (pct > 20) return '#ffcc00';
-    return '#ff4444';
+// Phase 2: Fleet Intelligence data structures
+let rideSessions = {}; // { scooterId: [{startTime, endTime, duration, distance, maxSpeed}] }
+let batteryHistory = {}; // { scooterId: [{timestamp, battery, voltage}] }
+let usageHeatmap = {}; // { scooterId: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] } - hourly counts
+let scooterRegistry = {}; // { scooterId: { name, notes, status, speedLimit } }
+let riderAccounts = {}; // { riderId: { name, assignedScooters: [], sessions: { scooterId: { startTime, active } } } }
+let isAdmin = false; // Admin authentication state
+let isLoggedIn = false; // App-wide authentication state
+let isDarkMode = true; // Theme state
+let auditLog = []; // Audit log for all actions
+let userRoles = {}; // { userId: { role: 'admin'|'operator'|'viewer', permissions: [] } }
+let pricingConfig = { ratePerMinute: 0.25, baseFee: 1.00, currency: 'USD' }; // Pricing configuration
+let maintenanceSchedule = []; // [{ scooterId, scheduledDate, type, notes, completed }]
+let currentUser = null; // Current logged-in user with role
+
+// Role permissions configuration
+const ROLE_PERMISSIONS = {
+  admin: ['all'],
+  operator: ['view_fleet', 'control_scooters', 'assign_scooters', 'view_analytics', 'view_registry', 'schedule_maintenance'],
+  viewer: ['view_fleet', 'view_analytics', 'view_registry']
+};
+
+// Phase 3: GPS & Map data structures
+let scooterGPS = {}; // { scooterId: { lat, lng, lastUpdate, trail: [{lat, lng, timestamp}] } }
+let globalGeofence = { enabled: true, radius: 500, centerLat: 40.7128, centerLng: -74.0060 }; // Single global geofence
+
+const DEMO = {
+  'SCO-001':{battery:78,voltage:37.8,speed:8.5,moving:true,mode:'D',brake:false,light:true,diag:false,valid:true,online:true,lastSeen:Date.now()},
+  'SCO-002':{battery:42,voltage:34.2,speed:0,moving:false,mode:'ECO',brake:true,light:false,diag:false,valid:true,online:true,lastSeen:Date.now()-800},
+  'SCO-003':{battery:15,voltage:32.5,speed:3.2,moving:true,mode:'S',brake:false,light:true,diag:false,valid:true,online:true,lastSeen:Date.now()-1200},
+};
+
+// Initialize Phase 2 demo data
+function initPhase2Data() {
+  const now = Date.now();
+  const hourAgo = now - 3600000;
+  
+  // Initialize demo ride sessions
+  rideSessions = {
+    'SCO-001': [
+      { startTime: hourAgo - 7200000, endTime: hourAgo - 3600000, duration: 60, distance: 5.2, maxSpeed: 12.5 },
+      { startTime: hourAgo - 1800000, endTime: hourAgo - 600000, duration: 20, distance: 1.8, maxSpeed: 9.3 }
+    ],
+    'SCO-002': [
+      { startTime: hourAgo - 5400000, endTime: hourAgo - 4800000, duration: 10, distance: 0.8, maxSpeed: 6.2 }
+    ],
+    'SCO-003': [
+      { startTime: hourAgo - 3600000, endTime: null, duration: 60, distance: 4.5, maxSpeed: 15.8 }
+    ]
+  };
+  
+  // Initialize demo battery history
+  batteryHistory = {
+    'SCO-001': [
+      { timestamp: hourAgo - 7200000, battery: 95, voltage: 38.2 },
+      { timestamp: hourAgo - 5400000, battery: 88, voltage: 37.9 },
+      { timestamp: hourAgo - 3600000, battery: 82, voltage: 37.6 },
+      { timestamp: hourAgo - 1800000, battery: 80, voltage: 37.7 },
+      { timestamp: now, battery: 78, voltage: 37.8 }
+    ],
+    'SCO-002': [
+      { timestamp: hourAgo - 7200000, battery: 55, voltage: 35.1 },
+      { timestamp: hourAgo - 5400000, battery: 50, voltage: 34.8 },
+      { timestamp: hourAgo - 3600000, battery: 46, voltage: 34.5 },
+      { timestamp: hourAgo - 1800000, battery: 44, voltage: 34.3 },
+      { timestamp: now, battery: 42, voltage: 34.2 }
+    ],
+    'SCO-003': [
+      { timestamp: hourAgo - 7200000, battery: 28, voltage: 33.5 },
+      { timestamp: hourAgo - 5400000, battery: 24, voltage: 33.2 },
+      { timestamp: hourAgo - 3600000, battery: 20, voltage: 32.9 },
+      { timestamp: hourAgo - 1800000, battery: 17, voltage: 32.7 },
+      { timestamp: now, battery: 15, voltage: 32.5 }
+    ]
+  };
+  
+  // Initialize demo usage heatmap
+  usageHeatmap = {
+    'SCO-001': [0,0,0,0,0,0,0,2,5,8,12,15,18,20,22,19,15,12,8,5,3,1,0,0],
+    'SCO-002': [0,0,0,0,0,0,0,1,3,5,7,9,11,13,12,10,8,6,4,2,1,0,0,0],
+    'SCO-003': [0,0,0,0,0,0,0,3,6,10,14,18,22,25,24,20,16,12,8,5,3,2,0,0]
+  };
+  
+  // Initialize demo scooter registry
+  scooterRegistry = {
+    'SCO-001': { name: 'Downtown Express', notes: 'High usage unit', status: 'active', speedLimit: null },
+    'SCO-002': { name: 'Campus Cruiser', notes: 'Battery needs replacement soon', status: 'charging', speedLimit: 'ECO' },
+    'SCO-003': { name: 'Park Runner', notes: '', status: 'active', speedLimit: null }
+  };
+  
+  // Initialize demo rider accounts
+  riderAccounts = {
+    'RIDER-001': { name: 'Alex Johnson', assignedScooters: ['SCO-001'], sessions: { 'SCO-001': { startTime: hourAgo - 1800000, active: true } } },
+    'RIDER-002': { name: 'Sam Wilson', assignedScooters: [], sessions: {} },
+    'RIDER-003': { name: 'Jordan Lee', assignedScooters: ['SCO-003'], sessions: { 'SCO-003': { startTime: hourAgo - 3600000, active: true } } }
+  };
+
+  // Initialize demo GPS data
+  scooterGPS = {
+    'SCO-001': { lat: 40.7128, lng: -74.0060, lastUpdate: now, trail: [] },
+    'SCO-002': { lat: 40.7148, lng: -74.0080, lastUpdate: now - 600000, trail: [] },
+    'SCO-003': { lat: 40.7108, lng: -74.0040, lastUpdate: now - 300000, trail: [] }
+  };
+
+  // Initialize demo geofence zones
+  globalGeofence = { enabled: true, radius: 500, centerLat: 40.7128, centerLng: -74.0060 };
+}
+
+function battClass(p){return p>50?'tv-hi':p>20?'tv-mid':'tv-lo'}
+function battColor(p){return p>50?'#10B981':p>20?'#F59E0B':'#EF4444'}
+function timeSince(ts){const s=Math.floor((Date.now()-ts)/1000);if(s<3)return 'just now';if(s<60)return s+'s ago';return Math.floor(s/60)+'m ago';}
+
+// ิ๖วิ๖ว Navigation ิ๖วิ๖ว
+function goTo(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.querySelector(`[data-page="${page}"]`).classList.add('active');
+  if(page === 'battery') renderBatteryPage();
+  if(page === 'analytics') renderAnalyticsPage();
+  if(page === 'registry') renderRegistryPage();
+  if(page === 'map') renderMapPage();
+}
+
+// ิ๖วิ๖ว Alerts ิ๖วิ๖ว
+function addAlert(type, msg, isBroadcast) {
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const entry = {type, msg, time: timeStr, id: Date.now()+Math.random()};
+  if(isBroadcast) {
+    bcLog.unshift(entry);
+    if(bcLog.length>30) bcLog = bcLog.slice(0,30);
+    renderBcLog();
+  } else {
+    alertLog.unshift(entry);
+    if(alertLog.length>60) alertLog = alertLog.slice(0,60);
+    renderAlerts();
+  }
+}
+
+function renderAlerts() {
+  const list = document.getElementById('alert-list');
+  const badge = document.getElementById('alert-count-badge');
+  const navBadge = document.getElementById('nav-alert-badge');
+  const active = alertLog.filter(a => a.type !== 'info');
+  badge.textContent = alertLog.length + ' event' + (alertLog.length!==1?'s':'');
+  if(active.length > 0) {
+    navBadge.textContent = active.length;
+    navBadge.style.display = '';
+  } else {
+    navBadge.style.display = 'none';
+  }
+  if(alertLog.length === 0) {
+    list.innerHTML = '<div class="alerts-empty">No alerts ิว๖ all systems normal</div>';
+    return;
+  }
+  list.innerHTML = alertLog.map(a => `
+    <div class="alert-item alert-in">
+      <span class="alert-dot ${a.type}"></span>
+      <div class="alert-body">
+        <div class="alert-msg">${a.msg}</div>
+        <div class="alert-time">${a.time}</div>
+      </div>
+      <span class="alert-type-badge ${a.type}">${a.type}</span>
+    </div>`).join('');
+}
+
+function renderBcLog() {
+  const el = document.getElementById('bc-log');
+  if(bcLog.length === 0){el.innerHTML='<div class="alerts-empty">No broadcast commands sent yet</div>';return;}
+  el.innerHTML = bcLog.map(a => `
+    <div class="alert-item alert-in">
+      <span class="alert-dot ${a.type}"></span>
+      <div class="alert-body">
+        <div class="alert-msg">${a.msg}</div>
+        <div class="alert-time">${a.time}</div>
+      </div>
+      <span class="alert-type-badge ${a.type}">broadcast</span>
+    </div>`).join('');
+}
+
+function clearAlerts() {
+  alertLog = [];
+  renderAlerts();
+}
+
+function checkAlerts(fleet) {
+  Object.keys(fleet).forEach(id => {
+    const d = fleet[id];
+    const prev = prevStates[id] || {};
+    if(d.battery <= 20 && d.battery > 5 && !prev.lowBattAlerted) {
+      addAlert('warn', `${id} ิว๖ battery low (${Math.round(d.battery)}%)`);
+      if(!prevStates[id]) prevStates[id]={};
+      prevStates[id].lowBattAlerted = true;
+    }
+    if(d.battery > 20 && prev.lowBattAlerted) {
+      if(prevStates[id]) prevStates[id].lowBattAlerted = false;
+    }
+    if(d.battery <= 5 && d.battery > 0 && !prev.critBattAlerted) {
+      addAlert('danger', `${id} ิว๖ battery critical (${Math.round(d.battery)}%) ิว๖ charge immediately`);
+      if(!prevStates[id]) prevStates[id]={};
+      prevStates[id].critBattAlerted = true;
+    }
+    if(!d.online && prev.wasOnline !== false) addAlert('danger', `${id} ิว๖ went offline`);
+    if(d.online && prev.wasOnline === false) addAlert('info', `${id} ิว๖ back online`);
+    if(!prevStates[id]) prevStates[id] = {};
+    prevStates[id].battery = d.battery;
+    prevStates[id].wasOnline = d.online;
+  });
+}
+
+// ิ๖วิ๖ว Filter / Sort ิ๖วิ๖ว
+function setFilter(f) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-pill').forEach(p => p.classList.toggle('active', p.dataset.filter === f));
+  renderFleet(fleetData);
+}
+function setSortAndRender() {
+  activeSort = document.getElementById('sort-select').value;
+  renderFleet(fleetData);
+}
+function applyFilterSort(fleet) {
+  let ids = Object.keys(fleet);
+  if(activeFilter==='online') ids=ids.filter(id=>fleet[id].online);
+  else if(activeFilter==='offline') ids=ids.filter(id=>!fleet[id].online);
+  else if(activeFilter==='moving') ids=ids.filter(id=>fleet[id].moving);
+  else if(activeFilter==='locked') ids=ids.filter(id=>fleet[id].brake);
+  else if(activeFilter==='low_batt') ids=ids.filter(id=>fleet[id].battery<=20);
+  if(activeSort==='battery_asc') ids.sort((a,b)=>(fleet[a].battery||0)-(fleet[b].battery||0));
+  else if(activeSort==='battery_desc') ids.sort((a,b)=>(fleet[b].battery||0)-(fleet[a].battery||0));
+  else if(activeSort==='speed_desc') ids.sort((a,b)=>(fleet[b].speed||0)-(fleet[a].speed||0));
+  else if(activeSort==='status') ids.sort((a,b)=>(fleet[b].online?1:0)-(fleet[a].online?1:0));
+  else ids.sort();
+  return ids;
+}
+
+// ิ๖วิ๖ว Render fleet ิ๖วิ๖ว
+function renderFleet(fleet) {
+  const allIds = Object.keys(fleet);
+  let on=0,tb=0,lk=0;
+  allIds.forEach(id=>{const d=fleet[id];if(d.online)on++;tb+=d.battery||0;if(d.brake)lk++;});
+  document.getElementById('sum-total').textContent = allIds.length;
+  document.getElementById('sum-online').textContent = on;
+  document.getElementById('sum-batt').textContent = allIds.length ? Math.round(tb/allIds.length)+'%' : 'ิว๖';
+  document.getElementById('sum-locked').textContent = lk;
+
+  const ids = applyFilterSort(fleet);
+  const grid = document.getElementById('fleet-grid');
+  if(ids.length === 0) {
+    grid.innerHTML = `<div class="no-results"><i class="ti ti-filter-off"></i><p>No scooters match this filter</p></div>`;
+    return;
+  }
+  grid.innerHTML = ids.map(id => {
+    const d = fleet[id];
+    const bp = d.battery||0;
+    const cardCls = bp<=5?'crit':bp<=20?'warn':'';
+    return `<div class="scard${d.online?'':' offline'} ${cardCls}" id="card-${id}">
+      <div class="scard-hd">
+        <div class="scard-id">
+          <div class="scard-icon"><i class="ti ti-bolt" aria-hidden="true"></i></div>
+          <div>
+            <div class="scard-name">${id}</div>
+            <div class="scard-ip">${d.ip||'192.168.x.x'}</div>
+          </div>
+        </div>
+        <div class="badges">
+          ${bp<=20?`<span class="badge badge-low">Low</span>`:''}
+          ${d.moving?`<span class="badge badge-moving">Moving</span>`:''}
+          <span class="badge ${d.online?'badge-on':'badge-off'}">${d.online?'Online':'Offline'}</span>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="tel-grid">
+        <div class="tel-cell">
+          <div class="tel-lbl">Speed</div>
+          <div class="tel-val tv-speed">${(d.speed||0).toFixed(1)}</div>
+          <div class="tel-unit">mph</div>
+        </div>
+        <div class="tel-cell">
+          <div class="tel-lbl">Battery</div>
+          <div class="tel-val ${battClass(bp)}">${bp.toFixed(0)}</div>
+          <div class="tel-unit">%</div>
+        </div>
+        <div class="tel-cell">
+          <div class="tel-lbl">Mode</div>
+          <div class="tel-val tv-mode">${d.mode||'ิว๖'}</div>
+          <div class="tel-unit">riding</div>
+        </div>
+        <div class="tel-cell">
+          <div class="tel-lbl">Voltage</div>
+          <div class="tel-val tv-volt">${(d.voltage||0).toFixed(1)}</div>
+          <div class="tel-unit">V</div>
+        </div>
+        <div class="tel-cell">
+          <div class="tel-lbl">Brake</div>
+          <div class="tel-val ${d.brake?'tv-brake-on':'tv-brake-off'}">${d.brake?'ON':'OFF'}</div>
+          <div class="tel-unit">state</div>
+        </div>
+        <div class="tel-cell">
+          <div class="tel-lbl">Light</div>
+          <div class="tel-val ${d.light?'tv-light-on':'tv-light-off'}">${d.light?'ON':'OFF'}</div>
+          <div class="tel-unit">headlight</div>
+        </div>
+      </div>
+      <div class="batt-wrap">
+        <div class="batt-header">
+          <span class="batt-label">Charge</span>
+          <span class="batt-pct" style="color:${battColor(bp)}">${bp.toFixed(0)}%</span>
+        </div>
+        <div class="batt-track"><div class="batt-fill" style="width:${bp}%;background:${battColor(bp)}"></div></div>
+      </div>
+      <div class="ctrl-grid">
+        <button class="ctrl-btn danger span2" onclick="sendCmd('${id}','brakeOn')" aria-label="Lock ${id}"><i class="ti ti-lock"></i>Lock / Brake ON</button>
+        <button class="ctrl-btn success span2" onclick="sendCmd('${id}','brakeOff')" aria-label="Unlock ${id}"><i class="ti ti-lock-open"></i>Unlock / Brake OFF</button>
+        <button class="ctrl-btn warn" onclick="sendCmd('${id}','mode')" aria-label="Cycle mode ${id}"><i class="ti ti-bolt"></i>Cycle mode</button>
+        <button class="ctrl-btn info" onclick="sendCmd('${id}','light')" aria-label="Toggle light ${id}"><i class="ti ti-bulb"></i>Toggle light</button>
+        <button class="ctrl-btn" onclick="sendCmd('${id}','walk')" aria-label="Walk mode ${id}"><i class="ti ti-walk"></i>Walk mode</button>
+        <button class="ctrl-btn danger" onclick="sendCmd('${id}','power')" aria-label="Power ${id}"><i class="ti ti-power"></i>Power ON/OFF</button>
+      </div>
+      <div class="lastseen" id="ls-${id}">Last seen ${timeSince(d.lastSeen)}</div>
+    </div>`;
+  }).join('');
+}
+
+// ิ๖วิ๖ว Battery page ิ๖วิ๖ว
+function initChart() {
+  const ctx = document.getElementById('batt-chart');
+  if(!ctx) return;
+  battChart = new Chart(ctx, {
+    type:'bar',
+    data:{labels:[],datasets:[{label:'Battery %',data:[],backgroundColor:[],borderRadius:5,borderSkipped:false}]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toFixed(0)+'%'}}},
+      scales:{
+        x:{grid:{display:false},ticks:{color:'#475569',font:{family:'DM Mono',size:11}}},
+        y:{min:0,max:100,grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#475569',font:{size:10},callback:v=>v+'%'}}
+      }
+    }
+  });
+}
+
+function renderBatteryPage() {
+  const fleet = fleetData;
+  const ids = Object.keys(fleet);
+  let hi=0,mid=0,lo=0;
+  ids.forEach(id=>{const b=fleet[id].battery||0;if(b>50)hi++;else if(b>20)mid++;else lo++;});
+  document.getElementById('batt-hi-count').textContent = hi;
+  document.getElementById('batt-mid-count').textContent = mid;
+  document.getElementById('batt-lo-count').textContent = lo;
+
+  if(battChart) {
+    battChart.data.labels = ids;
+    battChart.data.datasets[0].data = ids.map(id=>fleet[id].battery||0);
+    battChart.data.datasets[0].backgroundColor = ids.map(id=>battColor(fleet[id].battery||0));
+    battChart.update('none');
+  }
+  const legend = document.getElementById('chart-legend');
+  legend.innerHTML = ids.map(id=>`<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:#94A3B8"><span style="width:8px;height:8px;border-radius:2px;background:${battColor(fleet[id].battery||0)};flex-shrink:0"></span>${id}</span>`).join('');
+
+  const detail = document.getElementById('batt-detail-list');
+  detail.innerHTML = ids.sort((a,b)=>(fleet[a].battery||0)-(fleet[b].battery||0)).map(id=>{
+    const bp = fleet[id].battery||0;
+    return `<div style="display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)">
+      <div style="width:72px;font-size:13px;font-weight:600;color:var(--text-primary);font-family:var(--mono)">${id}</div>
+      <div style="flex:1">
+        <div class="batt-track"><div class="batt-fill" style="width:${bp}%;background:${battColor(bp)}"></div></div>
+      </div>
+      <div style="font-size:13px;font-weight:600;color:${battColor(bp)};font-family:var(--mono);width:42px;text-align:right">${bp.toFixed(0)}%</div>
+      <div style="font-size:11px;color:var(--text-tertiary);width:60px;text-align:right">${(fleet[id].voltage||0).toFixed(1)} V</div>
+    </div>`;
+  }).join('') + '<div style="height:16px"></div>';
+}
+
+// ิ๖วิ๖ว Analytics page ิ๖วิ๖ว
+function renderAnalyticsPage() {
+  const fleet = fleetData;
+  const ids = Object.keys(fleet);
+  
+  // Populate scooter select dropdowns
+  const analyticsSelect = document.getElementById('analytics-scooter-select');
+  const battHistorySelect = document.getElementById('batt-history-scooter-select');
+  const heatmapSelect = document.getElementById('heatmap-scooter-select');
+  
+  if(analyticsSelect) {
+    analyticsSelect.innerHTML = '<option value="all">All scooters</option>' + 
+      ids.map(id => `<option value="${id}">${id}</option>`).join('');
+  }
+  if(battHistorySelect) {
+    battHistorySelect.innerHTML = '<option value="">Select scooter</option>' + 
+      ids.map(id => `<option value="${id}">${id}</option>`).join('');
+  }
+  if(heatmapSelect) {
+    heatmapSelect.innerHTML = '<option value="">Select scooter</option>' + 
+      ids.map(id => `<option value="${id}">${id}</option>`).join('');
+  }
+  
+  // Calculate analytics stats
+  let totalRides = 0;
+  let totalDuration = 0;
+  let totalDistance = 0;
+  let healthIssues = 0;
+  
+  ids.forEach(id => {
+    const sessions = rideSessions[id] || [];
+    totalRides += sessions.length;
+    sessions.forEach(s => {
+      totalDuration += s.duration || 0;
+      totalDistance += s.distance || 0;
+    });
+    
+    // Check health issues
+    const d = fleet[id];
+    if(d && (d.voltage < 33 || d.voltage > 42 || (d.speed > 20 && d.moving))) {
+      healthIssues++;
+    }
+  });
+  
+  document.getElementById('analytics-total-rides').textContent = totalRides;
+  document.getElementById('analytics-avg-duration').textContent = totalRides ? Math.round(totalDuration / totalRides) + 'm' : 'ิว๖';
+  document.getElementById('analytics-total-distance').textContent = totalDistance.toFixed(1);
+  document.getElementById('analytics-health-issues').textContent = healthIssues;
+  
+  // Render ride sessions
+  renderRideSessions(analyticsSelect.value);
+  
+  // Render health scores
+  renderHealthScores();
+}
+
+function renderRideSessions(scooterId) {
+  const list = document.getElementById('ride-sessions-list');
+  let allSessions = [];
+  
+  Object.keys(rideSessions).forEach(id => {
+    if(scooterId === 'all' || scooterId === id) {
+      (rideSessions[id] || []).forEach(s => {
+        allSessions.push({ ...s, scooterId: id });
+      });
+    }
+  });
+  
+  allSessions.sort((a, b) => b.startTime - a.startTime);
+  
+  if(allSessions.length === 0) {
+    list.innerHTML = '<div class="alerts-empty">No ride sessions recorded yet</div>';
+    return;
+  }
+  
+  list.innerHTML = allSessions.slice(0, 20).map(s => {
+    const startDate = new Date(s.startTime);
+    const endDate = s.endTime ? new Date(s.endTime) : null;
+    return `<div style="display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)">
+      <div style="width:80px;font-size:13px;font-weight:600;color:var(--text-primary);font-family:var(--mono)">${s.scooterId}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;color:var(--text-primary)">${startDate.toLocaleDateString()} ${startDate.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">${endDate ? 'Ended: ' + endDate.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : 'In progress'}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:13px;font-weight:600;color:var(--text-primary)">${s.duration.toFixed(1)} min</div>
+        <div style="font-size:11px;color:var(--text-secondary)">${s.distance.toFixed(1)} mi</div>
+      </div>
+    </div>`;
+  }).join('') + '<div style="height:16px"></div>';
+}
+
+function renderBatteryHistoryChart() {
+  const scooterId = document.getElementById('batt-history-scooter-select').value;
+  if(!scooterId) return;
+  
+  const ctx = document.getElementById('batt-history-chart');
+  if(!ctx) return;
+  
+  const history = batteryHistory[scooterId] || [];
+  
+  if(battHistoryChart) {
+    battHistoryChart.destroy();
+  }
+  
+  battHistoryChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: history.map(h => new Date(h.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})),
+      datasets: [{
+        label: 'Battery %',
+        data: history.map(h => h.battery),
+        borderColor: '#3B82F6',
+        backgroundColor: 'rgba(59,130,246,0.1)',
+        fill: true,
+        tension: 0.4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#475569', font: { family: 'DM Mono', size: 10 } } },
+        y: { min: 0, max: 100, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#475569', font: { size: 10 }, callback: v => v + '%' } }
+      }
+    }
+  });
+}
+
+function renderUsageHeatmap() {
+  const scooterId = document.getElementById('heatmap-scooter-select').value;
+  if(!scooterId) return;
+  
+  const ctx = document.getElementById('usage-heatmap-chart');
+  if(!ctx) return;
+  
+  const heatmap = usageHeatmap[scooterId] || new Array(24).fill(0);
+  
+  if(usageHeatmapChart) {
+    usageHeatmapChart.destroy();
+  }
+  
+  usageHeatmapChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+      datasets: [{
+        label: 'Activity count',
+        data: heatmap,
+        backgroundColor: heatmap.map(v => v > 0 ? '#3B82F6' : '#1E293B'),
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#475569', font: { family: 'DM Mono', size: 9 } } },
+        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#475569', font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+function renderHealthScores() {
+  const list = document.getElementById('health-scores-list');
+  const fleet = fleetData;
+  const ids = Object.keys(fleet);
+  
+  const scores = ids.map(id => {
+    const d = fleet[id];
+    let score = 100;
+    let issues = [];
+    
+    if(d.voltage < 33) { score -= 20; issues.push('Low voltage'); }
+    if(d.voltage > 42) { score -= 15; issues.push('High voltage'); }
+    if(d.battery < 20) { score -= 10; issues.push('Low battery'); }
+    if(d.speed > 20 && d.moving) { score -= 15; issues.push('Overspeed'); }
+    if(!d.online) { score -= 25; issues.push('Offline'); }
+    
+    return { id, score: Math.max(0, score), issues };
+  });
+  
+  list.innerHTML = scores.map(s => {
+    const scoreColor = s.score >= 80 ? '#10B981' : s.score >= 60 ? '#F59E0B' : '#EF4444';
+    return `<div style="display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)">
+      <div style="width:80px;font-size:13px;font-weight:600;color:var(--text-primary);font-family:var(--mono)">${s.id}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600;color:${scoreColor}">${s.score}%</div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">${s.issues.length ? s.issues.join(', ') : 'No issues'}</div>
+      </div>
+      <div style="width:8px;height:8px;border-radius:50%;background:${scoreColor}"></div>
+    </div>`;
+  }).join('') + '<div style="height:16px"></div>';
+}
+
+// ิ๖วิ๖ว Registry page ิ๖วิ๖ว
+function renderRegistryPage() {
+  const fleet = fleetData;
+  const ids = Object.keys(fleet);
+  
+  // Initialize registry for any new scooters
+  ids.forEach(id => {
+    if(!scooterRegistry[id]) {
+      scooterRegistry[id] = {
+        name: id,
+        notes: '',
+        status: 'active',
+        speedLimit: null
+      };
+    }
+  });
+  
+  // Calculate stats
+  let active = 0, charging = 0, maintenance = 0, speedLimited = 0;
+  ids.forEach(id => {
+    const reg = scooterRegistry[id];
+    if(reg.status === 'active') active++;
+    if(reg.status === 'charging') charging++;
+    if(reg.status === 'maintenance') maintenance++;
+    if(reg.speedLimit) speedLimited++;
+  });
+  
+  document.getElementById('registry-active').textContent = active;
+  document.getElementById('registry-charging').textContent = charging;
+  document.getElementById('registry-maintenance').textContent = maintenance;
+  document.getElementById('registry-speed-limited').textContent = speedLimited;
+  
+  // Render registry list
+  const list = document.getElementById('registry-list');
+  list.innerHTML = ids.map(id => {
+    const reg = scooterRegistry[id];
+    const d = fleet[id];
+    const statusColors = {
+      active: 'rgba(16,185,129,0.15)',
+      charging: 'rgba(245,158,11,0.15)',
+      maintenance: 'rgba(239,68,68,0.15)'
+    };
+    const statusTextColors = {
+      active: '#10B981',
+      charging: '#F59E0B',
+      maintenance: '#EF4444'
+    };
+    
+    return `<div style="display:flex;align-items:center;gap:14px;padding:16px 0;border-bottom:1px solid var(--border)">
+      <div style="width:80px;font-size:13px;font-weight:600;color:var(--text-primary);font-family:var(--mono)">${id}</div>
+      <div style="flex:1">
+        <input type="text" value="${reg.name}" onchange="updateRegistry('${id}','name',this.value)" 
+          style="background:transparent;border:none;color:var(--text-primary);font-size:13px;font-weight:500;width:100%;outline:none" />
+        <input type="text" value="${reg.notes}" placeholder="Add notes..." onchange="updateRegistry('${id}','notes',this.value)"
+          style="background:transparent;border:none;color:var(--text-secondary);font-size:11px;width:100%;margin-top:4px;outline:none" />
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <select onchange="updateRegistry('${id}','status',this.value)" 
+          style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--border-light);background:${statusColors[reg.status]};color:${statusTextColors[reg.status]}">
+          <option value="active" ${reg.status === 'active' ? 'selected' : ''}>Active</option>
+          <option value="charging" ${reg.status === 'charging' ? 'selected' : ''}>Charging</option>
+          <option value="maintenance" ${reg.status === 'maintenance' ? 'selected' : ''}>Maintenance</option>
+        </select>
+        <select onchange="updateRegistry('${id}','speedLimit',this.value)"
+          style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--border-light);background:var(--navy-2);color:var(--text-secondary)">
+          <option value="" ${!reg.speedLimit ? 'selected' : ''}>No limit</option>
+          <option value="ECO" ${reg.speedLimit === 'ECO' ? 'selected' : ''}>ECO only</option>
+          <option value="D" ${reg.speedLimit === 'D' ? 'selected' : ''}>D max</option>
+        </select>
+      </div>
+    </div>`;
+  }).join('') + '<div style="height:16px"></div>';
+  
+  // Render riders list
+  renderRidersList();
+
+  // Render audit log
+  renderAuditLog();
+
+  // Render maintenance list
+  renderMaintenanceList();
+
+  // Render user roles
+  renderUserRoles();
+
+  // Show/hide export button based on admin status
+  const exportBtn = document.getElementById('export-btn');
+  if(exportBtn) {
+    exportBtn.style.display = isAdmin ? 'inline-flex' : 'none';
+  }
+}
+
+function updateRegistry(id, field, value) {
+  if(!scooterRegistry[id]) {
+    scooterRegistry[id] = { name: id, notes: '', status: 'active', speedLimit: null };
+  }
+  scooterRegistry[id][field] = value;
+
+  // Apply speed limit if set
+  if(field === 'speedLimit' && value && fleetData[id]) {
+    if(value === 'ECO') {
+      fleetData[id].mode = 'ECO';
+    } else if(value === 'D') {
+      if(fleetData[id].mode === 'S') fleetData[id].mode = 'D';
+    }
+    renderFleet(fleetData);
   }
 
-  function batteryClass(pct) {
-    if (pct > 50) return 'green';
-    if (pct > 20) return 'yellow';
-    return 'red';
+  renderRegistryPage();
+  addAuditLog('registry_update', `${id} ${field} set to ${value}`);
+}
+
+function openRegistryModal() {
+  const id = prompt('Enter scooter ID (e.g., SCO-004):');
+  if(id && !fleetData[id]) {
+    fleetData[id] = {
+      battery: 100,
+      voltage: 36.0,
+      speed: 0,
+      moving: false,
+      mode: 'ECO',
+      brake: true,
+      light: false,
+      diag: false,
+      valid: true,
+      online: false,
+      lastSeen: Date.now()
+    };
+    scooterRegistry[id] = {
+      name: id,
+      notes: '',
+      status: 'active',
+      speedLimit: null
+    };
+    renderFleet(fleetData);
+    renderRegistryPage();
+    addAlert('info', `${id} ิว๖ added to registry`);
+  }
+}
+
+// ิ๖วิ๖ว Rider accounts ิ๖วิ๖ว
+function renderRidersList() {
+  const list = document.getElementById('riders-list');
+  const riderIds = Object.keys(riderAccounts);
+  const scooterIds = Object.keys(fleetData);
+
+  if(riderIds.length === 0) {
+    list.innerHTML = '<div class="alerts-empty">No rider accounts yet</div>';
+    return;
   }
 
-  function timeSince(ts) {
-    const sec = Math.floor((Date.now() - ts) / 1000);
-    if (sec < 5)  return 'just now';
-    if (sec < 60) return sec + 's ago';
-    return Math.floor(sec / 60) + 'm ago';
+  list.innerHTML = riderIds.map(id => {
+    const rider = riderAccounts[id];
+    const assignedScooters = rider.assignedScooters || [];
+
+    // Get all scooters assigned to other riders
+    const otherAssignedScooters = [];
+    Object.keys(riderAccounts).forEach(rid => {
+      if(rid !== id) {
+        (riderAccounts[rid].assignedScooters || []).forEach(sid => {
+          otherAssignedScooters.push(sid);
+        });
+      }
+    });
+
+    return `<div style="display:flex;align-items:flex-start;gap:14px;padding:16px 0;border-bottom:1px solid var(--border)">
+      <div style="width:90px;font-size:13px;font-weight:600;color:var(--text-primary);font-family:var(--mono)">${id}</div>
+      <div style="flex:1">
+        <input type="text" value="${rider.name}" onchange="updateRider('${id}','name',this.value)"
+          style="background:transparent;border:none;color:var(--text-primary);font-size:13px;font-weight:500;width:100%;outline:none" />
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">
+          ${assignedScooters.length > 0 ? `${assignedScooters.length} scooter${assignedScooters.length > 1 ? 's' : ''} assigned` : 'No scooters assigned'}
+        </div>
+        ${assignedScooters.length > 0 ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+          ${assignedScooters.map(sid => {
+            const session = rider.sessions[sid];
+            const isActive = session && session.active;
+            const sessionDuration = session && session.startTime ? Math.floor((Date.now() - session.startTime) / 60000) : 0;
+            return `<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--navy-3);border-radius:6px;border:1px solid var(--border-light)">
+              <span style="font-size:11px;font-weight:600;color:var(--text-primary);font-family:var(--mono)">${sid}</span>
+              ${isActive ? `<span style="font-size:10px;color:var(--text-secondary)">(${sessionDuration}m)</span>` : ''}
+              ${isActive ? `<button class="btn btn-danger" onclick="endRiderSession('${id}','${sid}')" style="padding:2px 6px;font-size:9px;margin-left:4px"><i class="ti ti-square-x"></i></button>` : ''}
+            </div>`;
+          }).join('')}
+        </div>` : ''}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <select onchange="assignScooterToRider('${id}',this.value)"
+          style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--border-light);background:var(--navy-2);color:var(--text-secondary)">
+          <option value="">+ Add scooter</option>
+          ${scooterIds.map(sid => {
+            const isAssignedToOther = otherAssignedScooters.includes(sid);
+            const isAssignedToThis = assignedScooters.includes(sid);
+            return `<option value="${sid}" ${isAssignedToOther && !isAssignedToThis ? 'disabled style="color:#64748b"' : ''}>${sid}${isAssignedToOther && !isAssignedToThis ? ' (assigned)' : ''}</option>`;
+          }).join('')}
+        </select>
+        <button class="btn btn-ghost" onclick="deleteRider('${id}')" style="padding:6px 8px;font-size:11px"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>`;
+  }).join('') + '<div style="height:16px"></div>';
+}
+
+function addRider() {
+  const id = prompt('Enter rider ID (e.g., RIDER-004):');
+  if(id && !riderAccounts[id]) {
+    const name = prompt('Enter rider name:');
+    if(name) {
+      riderAccounts[id] = {
+        name: name,
+        assignedScooters: [],
+        sessions: {}
+      };
+      renderRidersList();
+      renderRegistryPage();
+      addAlert('info', `${id} ิว๖ rider account created`);
+    }
+  }
+}
+
+function updateRider(id, field, value) {
+  if(riderAccounts[id]) {
+    riderAccounts[id][field] = value;
+    renderRidersList();
+  }
+}
+
+function assignScooterToRider(riderId, scooterId) {
+  if(!riderAccounts[riderId]) return;
+
+  // If unassigning (empty value), do nothing (use individual end session buttons)
+  if(!scooterId) return;
+
+  // Check if scooter is already assigned to this rider
+  if(riderAccounts[riderId].assignedScooters.includes(scooterId)) {
+    return;
   }
 
-  function initChart() {
-    const ctx = document.getElementById('batteryChart').getContext('2d');
-    batteryChart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: [],
-        datasets: [{
-          label: 'Battery %',
-          data: [],
-          backgroundColor: [],
-          borderRadius: 4,
-          borderSkipped: false
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: false
-          }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            max: 100,
-            grid: {
-              color: '#2a2a2a'
-            },
-            ticks: {
-              color: '#666666'
-            }
-          },
-          x: {
-            grid: {
-              display: false
-            },
-            ticks: {
-              color: '#666666'
+  // Add scooter to rider's assigned scooters
+  riderAccounts[riderId].assignedScooters.push(scooterId);
+
+  // Start session for this scooter
+  riderAccounts[riderId].sessions[scooterId] = {
+    startTime: Date.now(),
+    active: true
+  };
+
+  // Unlock the scooter for the rider
+  if(fleetData[scooterId]) {
+    fleetData[scooterId].brake = false;
+  }
+
+  addAlert('info', `${riderId} ิว๖ assigned to ${scooterId}, session started`);
+  addAuditLog('scooter_assign', `${scooterId} assigned to ${riderId}`);
+
+  renderRidersList();
+  renderFleet(fleetData);
+}
+
+function endRiderSession(riderId, scooterId = null, render = true) {
+  if(!riderAccounts[riderId]) return;
+
+  // If no scooterId specified, end all sessions
+  if(!scooterId) {
+    const assignedScooters = riderAccounts[riderId].assignedScooters || [];
+    assignedScooters.forEach(sid => endRiderSession(riderId, sid, false));
+    if(render) {
+      renderRidersList();
+      renderFleet(fleetData);
+    }
+    return;
+  }
+
+  const session = riderAccounts[riderId].sessions[scooterId];
+  if(!session || !session.active) return;
+
+  const duration = session.startTime ? Math.floor((Date.now() - session.startTime) / 60000) : 0;
+
+  // Lock the scooter
+  if(fleetData[scooterId]) {
+    fleetData[scooterId].brake = true;
+  }
+
+  // Log the ride session
+  if(duration > 0) {
+    if(!rideSessions[scooterId]) rideSessions[scooterId] = [];
+    rideSessions[scooterId].push({
+      startTime: session.startTime,
+      endTime: Date.now(),
+      duration: duration,
+      distance: (fleetData[scooterId]?.speed || 0) * duration / 60,
+      maxSpeed: fleetData[scooterId]?.speed || 0
+    });
+  }
+
+  // Remove scooter from assigned scooters and end session
+  riderAccounts[riderId].assignedScooters = riderAccounts[riderId].assignedScooters.filter(s => s !== scooterId);
+  delete riderAccounts[riderId].sessions[scooterId];
+
+  addAlert('info', `${riderId} ิว๖ session ended for ${scooterId} (${duration} min)`);
+  addAuditLog('session_end', `${scooterId} session ended for ${riderId}, duration: ${duration} min`);
+
+  if(render) {
+    renderRidersList();
+    renderFleet(fleetData);
+  }
+}
+
+function deleteRider(id) {
+  if(confirm(`Delete rider account ${id}?`)) {
+    // End all sessions for this rider
+    endRiderSession(id, null, false);
+    delete riderAccounts[id];
+    renderRidersList();
+    renderRegistryPage();
+    addAlert('info', `${id} ิว๖ rider account deleted`);
+    addAuditLog('rider_delete', `Rider account ${id} deleted`);
+  }
+}
+
+// ิ๖วิ๖ว CSV Export ิ๖วิ๖ว
+function downloadCSV(filename, csvContent) {
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', filename);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function exportRideSessionsCSV() {
+  let csv = 'scooter_id,start_time,end_time,duration_minutes,distance_miles,max_speed_mph\n';
+  Object.keys(rideSessions).forEach(scooterId => {
+    (rideSessions[scooterId] || []).forEach(session => {
+      const startTime = new Date(session.startTime).toISOString();
+      const endTime = session.endTime ? new Date(session.endTime).toISOString() : '';
+      csv += `${scooterId},${startTime},${endTime},${session.duration},${session.distance},${session.maxSpeed}\n`;
+    });
+  });
+  downloadCSV('ride_sessions.csv', csv);
+  addAlert('info', 'Ride sessions CSV exported');
+}
+
+function exportBatteryHistoryCSV() {
+  let csv = 'scooter_id,timestamp,battery_percent,voltage\n';
+  Object.keys(batteryHistory).forEach(scooterId => {
+    (batteryHistory[scooterId] || []).forEach(entry => {
+      const timestamp = new Date(entry.timestamp).toISOString();
+      csv += `${scooterId},${timestamp},${entry.battery},${entry.voltage}\n`;
+    });
+  });
+  downloadCSV('battery_history.csv', csv);
+  addAlert('info', 'Battery history CSV exported');
+}
+
+function exportUsageHeatmapCSV() {
+  let csv = 'scooter_id,hour,activity_count\n';
+  Object.keys(usageHeatmap).forEach(scooterId => {
+    (usageHeatmap[scooterId] || []).forEach((count, hour) => {
+      csv += `${scooterId},${hour},${count}\n`;
+    });
+  });
+  downloadCSV('usage_heatmap.csv', csv);
+  addAlert('info', 'Usage heatmap CSV exported');
+}
+
+function exportScooterRegistryCSV() {
+  let csv = 'scooter_id,name,notes,status,speed_limit\n';
+  Object.keys(scooterRegistry).forEach(scooterId => {
+    const reg = scooterRegistry[scooterId];
+    csv += `${scooterId},"${reg.name}","${reg.notes}",${reg.status},${reg.speedLimit || ''}\n`;
+  });
+  downloadCSV('scooter_registry.csv', csv);
+  addAlert('info', 'Scooter registry CSV exported');
+}
+
+function exportRiderAccountsCSV() {
+  let csv = 'rider_id,name,assigned_scooters,active_sessions\n';
+  Object.keys(riderAccounts).forEach(riderId => {
+    const rider = riderAccounts[riderId];
+    const assignedScooters = (rider.assignedScooters || []).join(';');
+    const activeSessions = Object.keys(rider.sessions || {}).filter(sid => rider.sessions[sid].active).join(';');
+    csv += `${riderId},"${rider.name}","${assignedScooters}","${activeSessions}"\n`;
+  });
+  downloadCSV('rider_accounts.csv', csv);
+  addAlert('info', 'Rider accounts CSV exported');
+}
+
+function exportAllDataCSV() {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  let csv = `# Fleet Data Export - ${timestamp}\n\n`;
+
+  csv += `## Ride Sessions\n`;
+  csv += `scooter_id,start_time,end_time,duration_minutes,distance_miles,max_speed_mph\n`;
+  Object.keys(rideSessions).forEach(scooterId => {
+    (rideSessions[scooterId] || []).forEach(session => {
+      const startTime = new Date(session.startTime).toISOString();
+      const endTime = session.endTime ? new Date(session.endTime).toISOString() : '';
+      csv += `${scooterId},${startTime},${endTime},${session.duration},${session.distance},${session.maxSpeed}\n`;
+    });
+  });
+
+  csv += `\n## Battery History\n`;
+  csv += `scooter_id,timestamp,battery_percent,voltage\n`;
+  Object.keys(batteryHistory).forEach(scooterId => {
+    (batteryHistory[scooterId] || []).forEach(entry => {
+      const timestamp = new Date(entry.timestamp).toISOString();
+      csv += `${scooterId},${timestamp},${entry.battery},${entry.voltage}\n`;
+    });
+  });
+
+  csv += `\n## Usage Heatmap\n`;
+  csv += `scooter_id,hour,activity_count\n`;
+  Object.keys(usageHeatmap).forEach(scooterId => {
+    (usageHeatmap[scooterId] || []).forEach((count, hour) => {
+      csv += `${scooterId},${hour},${count}\n`;
+    });
+  });
+
+  csv += `\n## Scooter Registry\n`;
+  csv += `scooter_id,name,notes,status,speed_limit\n`;
+  Object.keys(scooterRegistry).forEach(scooterId => {
+    const reg = scooterRegistry[scooterId];
+    csv += `${scooterId},"${reg.name}","${reg.notes}",${reg.status},${reg.speedLimit || ''}\n`;
+  });
+
+  csv += `\n## Rider Accounts\n`;
+  csv += `rider_id,name,assigned_scooters,active_sessions\n`;
+  Object.keys(riderAccounts).forEach(riderId => {
+    const rider = riderAccounts[riderId];
+    const assignedScooters = (rider.assignedScooters || []).join(';');
+    const activeSessions = Object.keys(rider.sessions || {}).filter(sid => rider.sessions[sid].active).join(';');
+    csv += `${riderId},"${rider.name}","${assignedScooters}","${activeSessions}"\n`;
+  });
+
+  downloadCSV(`fleet_data_${timestamp}.csv`, csv);
+  addAlert('info', 'All data exported to CSV file');
+  addAuditLog('data_export', `Fleet data exported to CSV`);
+}
+
+// ิ๖วิ๖ว App Authentication ิ๖วิ๖ว
+function handleAppLogin(event) {
+  event.preventDefault();
+  const username = document.getElementById('login-username').value;
+  const password = document.getElementById('login-password').value;
+  const errorDiv = document.getElementById('login-error');
+
+  // Simple demo authentication (in production, use proper auth)
+  if(username === 'admin' && password === 'admin123') {
+    isLoggedIn = true;
+    isAdmin = true; // Admin has export privileges
+    currentUser = { username: 'admin', role: 'admin' };
+    document.getElementById('login-page').style.display = 'none';
+    document.getElementById('app-shell').classList.add('visible');
+    renderRegistryPage();
+    addAuditLog('login', `User ${username} logged in as admin`);
+    // Start polling after login
+    fetchFleet();
+    setInterval(fetchFleet, 1500);
+  } else {
+    errorDiv.textContent = 'Invalid credentials';
+    addAuditLog('login_failed', `Failed login attempt for ${username}`);
+  }
+}
+
+function handleAppLogout() {
+  isLoggedIn = false;
+  isAdmin = false;
+  currentUser = null;
+  document.getElementById('login-page').style.display = 'flex';
+  document.getElementById('app-shell').classList.remove('visible');
+  document.getElementById('login-username').value = '';
+  document.getElementById('login-password').value = '';
+  document.getElementById('login-error').textContent = '';
+  addAuditLog('logout', `User logged out`);
+}
+
+function toggleTheme() {
+  isDarkMode = !isDarkMode;
+  const body = document.body;
+  const icon = document.getElementById('theme-icon');
+
+  if(isDarkMode) {
+    body.classList.remove('light-mode');
+    icon.className = 'ti ti-sun';
+  } else {
+    body.classList.add('light-mode');
+    icon.className = 'ti ti-moon';
+  }
+
+  addAuditLog('theme_toggle', `Switched to ${isDarkMode ? 'dark' : 'light'} mode`);
+}
+
+// ิ๖วิ๖ว Audit Logging ิ๖วิ๖ว
+function addAuditLog(action, details) {
+  const entry = {
+    timestamp: Date.now(),
+    action: action,
+    details: details,
+    user: isLoggedIn ? 'admin' : 'system'
+  };
+  auditLog.unshift(entry);
+  if(auditLog.length > 500) auditLog = auditLog.slice(0, 500);
+}
+
+function renderAuditLog() {
+  const list = document.getElementById('audit-log-list');
+  if(!list) return;
+
+  if(auditLog.length === 0) {
+    list.innerHTML = '<div class="alerts-empty">No audit log entries</div>';
+    return;
+  }
+
+  list.innerHTML = auditLog.slice(0, 50).map(entry => {
+    const time = new Date(entry.timestamp).toLocaleString();
+    return `
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+            <span style="font-size:12px;font-weight:500;color:var(--text-primary)">${entry.action}</span>
+            <span style="font-size:10px;color:var(--text-tertiary)">by ${entry.user}</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-secondary)">${entry.details}</div>
+          <div style="font-size:10px;color:var(--text-tertiary);font-family:var(--mono);margin-top:2px">${time}</div>
+        </div>
+      </div>
+    `;
+  }).join('') + '<div style="height:16px"></div>';
+}
+
+// ิ๖วิ๖ว Pricing System ิ๖วิ๖ว
+function updatePricing(field, value) {
+  pricingConfig[field] = parseFloat(value);
+  addAlert('info', `Pricing updated: ${field} = ${value}`);
+  addAuditLog('pricing_update', `${field} set to ${value}`);
+}
+
+function calculateRideCost(duration) {
+  return pricingConfig.baseFee + (pricingConfig.ratePerMinute * duration);
+}
+
+// ิ๖วิ๖ว Maintenance Scheduling ิ๖วิ๖ว
+function scheduleMaintenance() {
+  const scooterId = prompt('Enter scooter ID (e.g., SCO-001):');
+  if(!scooterId || !fleetData[scooterId]) {
+    addAlert('danger', 'Invalid scooter ID');
+    return;
+  }
+
+  const dateStr = prompt('Enter date (YYYY-MM-DD):');
+  if(!dateStr) return;
+
+  const type = prompt('Enter maintenance type (e.g., battery, tire, brake):');
+  if(!type) return;
+
+  const notes = prompt('Enter notes (optional):') || '';
+
+  maintenanceSchedule.push({
+    scooterId: scooterId,
+    scheduledDate: dateStr,
+    type: type,
+    notes: notes,
+    completed: false
+  });
+
+  renderMaintenanceList();
+  addAlert('info', `Maintenance scheduled for ${scooterId} on ${dateStr}`);
+  addAuditLog('maintenance_schedule', `${type} maintenance scheduled for ${scooterId} on ${dateStr}`);
+}
+
+function renderMaintenanceList() {
+  const list = document.getElementById('maintenance-list');
+  if(!list) return;
+
+  if(maintenanceSchedule.length === 0) {
+    list.innerHTML = '<div class="alerts-empty">No maintenance scheduled</div>';
+    return;
+  }
+
+  list.innerHTML = maintenanceSchedule.map((item, index) => `
+    <div style="display:flex;align-items:center;gap:14px;padding:16px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:500;color:var(--text-primary)">${item.scooterId}</div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">
+          ${item.type} ิว๓ ${item.scheduledDate} ${item.completed ? 'ิฃ๔' : 'ิว๓ Pending'}
+        </div>
+        ${item.notes ? `<div style="font-size:10px;color:var(--text-tertiary);margin-top:2px">${item.notes}</div>` : ''}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="btn btn-ghost" onclick="completeMaintenance(${index})" style="padding:6px 12px;font-size:11px" ${item.completed ? 'disabled' : ''}>
+          ${item.completed ? 'Done' : 'Complete'}
+        </button>
+        <button class="btn btn-ghost" onclick="deleteMaintenance(${index})" style="padding:6px 8px;font-size:11px"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>
+  `).join('') + '<div style="height:16px"></div>';
+}
+
+function completeMaintenance(index) {
+  maintenanceSchedule[index].completed = true;
+  renderMaintenanceList();
+  addAlert('info', `Maintenance marked as complete`);
+  addAuditLog('maintenance_complete', `Maintenance completed for ${maintenanceSchedule[index].scooterId}`);
+}
+
+function deleteMaintenance(index) {
+  if(confirm('Delete this maintenance schedule?')) {
+    maintenanceSchedule.splice(index, 1);
+    renderMaintenanceList();
+    addAlert('info', 'Maintenance schedule deleted');
+    addAuditLog('maintenance_delete', 'Maintenance schedule deleted');
+  }
+}
+
+// ิ๖วิ๖ว User Roles & Permissions ิ๖วิ๖ว
+function hasPermission(permission) {
+  if(!currentUser) return false;
+  if(currentUser.role === 'admin') return true;
+  const permissions = ROLE_PERMISSIONS[currentUser.role] || [];
+  return permissions.includes('all') || permissions.includes(permission);
+}
+
+function checkPermission(permission) {
+  if(!hasPermission(permission)) {
+    addAlert('danger', 'Permission denied');
+    addAuditLog('permission_denied', `Permission denied for ${permission}`);
+    return false;
+  }
+  return true;
+}
+
+function renderUserRoles() {
+  const list = document.getElementById('user-roles-list');
+  if(!list) return;
+
+  const users = Object.keys(userRoles);
+  if(users.length === 0) {
+    list.innerHTML = '<div class="alerts-empty">No users configured</div>';
+    return;
+  }
+
+  list.innerHTML = users.map(userId => {
+    const user = userRoles[userId];
+    return `
+      <div style="display:flex;align-items:center;gap:14px;padding:16px 0;border-bottom:1px solid var(--border)">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:500;color:var(--text-primary)">${userId}</div>
+          <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Role: ${user.role}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button class="btn btn-ghost" onclick="editUserRole('${userId}')" style="padding:6px 12px;font-size:11px">Edit</button>
+          <button class="btn btn-ghost" onclick="deleteUserRole('${userId}')" style="padding:6px 8px;font-size:11px"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>
+    `;
+  }).join('') + '<div style="height:16px"></div>';
+}
+
+function addUserRole() {
+  const userId = prompt('Enter user ID:');
+  if(!userId) return;
+
+  const role = prompt('Enter role (admin, operator, viewer):');
+  if(!role || !['admin', 'operator', 'viewer'].includes(role)) {
+    addAlert('danger', 'Invalid role');
+    return;
+  }
+
+  userRoles[userId] = { role: role };
+  renderUserRoles();
+  addAlert('info', `User ${userId} added with role ${role}`);
+  addAuditLog('user_role_add', `User ${userId} added with role ${role}`);
+}
+
+function editUserRole(userId) {
+  const user = userRoles[userId];
+  if(!user) return;
+
+  const role = prompt('Enter new role (admin, operator, viewer):', user.role);
+  if(!role || !['admin', 'operator', 'viewer'].includes(role)) {
+    addAlert('danger', 'Invalid role');
+    return;
+  }
+
+  userRoles[userId].role = role;
+  renderUserRoles();
+  addAlert('info', `User ${userId} role updated to ${role}`);
+  addAuditLog('user_role_update', `User ${userId} role updated to ${role}`);
+}
+
+function deleteUserRole(userId) {
+  if(confirm(`Delete user ${userId}?`)) {
+    delete userRoles[userId];
+    renderUserRoles();
+    addAlert('info', `User ${userId} deleted`);
+    addAuditLog('user_role_delete', `User ${userId} deleted`);
+  }
+}
+
+// ิ๖วิ๖ว Error Handling ิ๖วิ๖ว
+function safeExecute(fn, errorMessage = 'Operation failed') {
+  try {
+    return fn();
+  } catch (error) {
+    console.error(error);
+    addAlert('danger', `${errorMessage}: ${error.message}`);
+    addAuditLog('error', `${errorMessage}: ${error.message}`);
+    return null;
+  }
+}
+
+function validateScooterId(id) {
+  if(!id) {
+    throw new Error('Scooter ID is required');
+  }
+  if(!fleetData[id]) {
+    throw new Error(`Scooter ${id} not found`);
+  }
+  return true;
+}
+
+function validateRiderId(id) {
+  if(!id) {
+    throw new Error('Rider ID is required');
+  }
+  if(!riderAccounts[id]) {
+    throw new Error(`Rider ${id} not found`);
+  }
+  return true;
+}
+
+// ิ๖วิ๖ว Admin Authentication (for export privileges) ิ๖วิ๖ว
+function handleAuth() {
+  if(isAdmin) {
+    logout();
+  } else {
+    login();
+  }
+}
+
+function login() {
+  const username = prompt('Enter admin username:');
+  if(!username) return;
+
+  const password = prompt('Enter admin password:');
+  if(!password) return;
+
+  // Simple demo authentication (in production, use proper auth)
+  if(username === 'admin' && password === 'admin123') {
+    isAdmin = true;
+    updateAuthButton();
+    addAlert('info', 'Logged in as admin');
+    renderRegistryPage(); // Re-render to show export button
+  } else {
+    addAlert('danger', 'Invalid credentials');
+  }
+}
+
+function logout() {
+  isAdmin = false;
+  updateAuthButton();
+  addAlert('info', 'Logged out');
+  renderRegistryPage(); // Re-render to hide export button
+}
+
+function updateAuthButton() {
+  const btn = document.getElementById('auth-btn');
+  if(isAdmin) {
+    btn.innerHTML = '<i class="ti ti-logout"></i> Logout';
+    btn.classList.add('btn-primary');
+    btn.classList.remove('btn-ghost');
+  } else {
+    btn.innerHTML = '<i class="ti ti-login"></i> Login';
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-ghost');
+  }
+}
+
+// ิ๖วิ๖ว Commands ิ๖วิ๖ว
+function sendCmd(id, action) {
+  const card = document.getElementById('card-'+id);
+  if(card){card.classList.add('cmd-flash');setTimeout(()=>card.classList.remove('cmd-flash'),400);}
+  if(demoMode) {
+    if(action==='brakeOn') fleetData[id]&&(fleetData[id].brake=true);
+    if(action==='brakeOff') fleetData[id]&&(fleetData[id].brake=false);
+    if(action==='light') fleetData[id]&&(fleetData[id].light=!fleetData[id].light);
+    if(action==='mode'){const modes=['ECO','D','S'];if(fleetData[id]){const i=modes.indexOf(fleetData[id].mode);fleetData[id].mode=modes[(i+1)%3];}}
+    renderFleet(fleetData);
+    return;
+  }
+  fetch(SERVER+'/command/'+id,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action})}).catch(()=>{});
+}
+
+function broadcastCmd(action) {
+  const ids = Object.keys(fleetData);
+  if(!ids.length) return;
+  ids.forEach(id => sendCmd(id, action));
+  const labels = {brakeOn:'Lock ALL',brakeOff:'Unlock ALL',mode:'Cycle mode ALL',light:'Toggle lights ALL'};
+  addAlert('info', `${labels[action]||action} ิว๖ sent to ${ids.length} scooter${ids.length!==1?'s':''}`, true);
+}
+
+// ิ๖วิ๖ว Polling ิ๖วิ๖ว
+function fetchFleet() {
+  if(demoMode) {
+    Object.keys(fleetData).forEach(id=>{
+      const d=fleetData[id];
+      if(d.moving){d.speed=Math.max(0,Math.min(16,d.speed+(Math.random()-.5)*1.5));d.battery=Math.max(0,d.battery-.05);}
+      d.lastSeen=Date.now()-Math.floor(Math.random()*2000);
+      
+      // Track battery history
+      if(!batteryHistory[id]) batteryHistory[id]=[];
+      batteryHistory[id].push({timestamp:Date.now(),battery:d.battery,voltage:d.voltage});
+      if(batteryHistory[id].length>50) batteryHistory[id]=batteryHistory[id].slice(-50);
+      
+      // Track usage heatmap
+      if(d.moving){
+        if(!usageHeatmap[id]) usageHeatmap[id]=new Array(24).fill(0);
+        const hour=new Date().getHours();
+        usageHeatmap[id][hour]++;
+
+        // Simulate GPS movement for moving scooters
+        if(scooterGPS[id]) {
+          const gps = scooterGPS[id];
+          // Add random movement
+          gps.lat += (Math.random() - 0.5) * 0.0001;
+          gps.lng += (Math.random() - 0.5) * 0.0001;
+          gps.lastUpdate = Date.now();
+
+          // Add to trail
+          if(!gps.trail) gps.trail = [];
+          gps.trail.push({ lat: gps.lat, lng: gps.lng, timestamp: Date.now() });
+          if(gps.trail.length > 100) gps.trail = gps.trail.slice(-100);
+
+          // Check geofence violations
+          if(globalGeofence.enabled) {
+            const distance = getDistance(gps.lat, gps.lng, globalGeofence.centerLat, globalGeofence.centerLng);
+            if(distance > globalGeofence.radius) {
+              // Auto-lock if outside geofence
+              d.brake = true;
+              addAlert('warn', `${id} ิว๖ left geofence zone (${distance.toFixed(0)}m > ${globalGeofence.radius}m), auto-locked`);
             }
           }
         }
       }
     });
-  }
-
-  function updateChart(fleet) {
-    if (!batteryChart) return;
-
-    const ids = Object.keys(fleet);
-    batteryChart.data.labels = ids;
-    batteryChart.data.datasets[0].data = ids.map(id => fleet[id].battery || 0);
-    batteryChart.data.datasets[0].backgroundColor = ids.map(id => batteryColor(fleet[id].battery || 0));
-    batteryChart.update();
-  }
-
-  function sendCommand(id, action) {
-    fetch(SERVER + '/command/' + id, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action })
-    }).catch(e => console.log(e));
-  }
-
-  function toggleHistory(id) {
-    const historyDiv = document.getElementById('history-' + id);
-    const button = event.target;
-
-    if (historyDiv.style.display === 'none') {
-      historyDiv.style.display = 'block';
-      button.textContent = 'Hide';
-      fetchHistory(id);
-    } else {
-      historyDiv.style.display = 'none';
-      button.textContent = 'Show';
+    checkAlerts(fleetData);
+    renderFleet(fleetData);
+    // Refresh map if on map page
+    if(document.getElementById('page-map').classList.contains('active')) {
+      renderMap();
     }
+    document.getElementById('conn-dot').className='conn-dot';
+    document.getElementById('conn-status').textContent='demo mode';
+    return;
+  }
+  fetch(SERVER+'/fleet').then(r=>r.json()).then(fleet=>{
+    checkAlerts(fleet);
+    fleetData=fleet;
+    demoMode=false;
+    document.getElementById('conn-dot').className='conn-dot live';
+    document.getElementById('conn-status').textContent='live';
+    renderFleet(fleet);
+  }).catch(()=>{
+    document.getElementById('conn-dot').className='conn-dot err';
+    document.getElementById('conn-status').textContent='offline';
+  });
+}
+
+// ิ๖วิ๖ว Init ิ๖วิ๖ว
+fleetData = {};
+initPhase2Data();
+initChart();
+renderFleet(fleetData);
+setInterval(fetchFleet, 1500); fetchFleet();
+
+// ิ๖วิ๖ว Phase 3: Map & GPS ิ๖วิ๖ว
+let map = null;
+let scooterMarkers = {};
+let geofenceCircle = null;
+
+function initMap() {
+  if(map) return;
+
+  // Initialize Leaflet map
+  map = L.map('map').setView([globalGeofence.centerLat, globalGeofence.centerLng], 14);
+
+  // Add OpenStreetMap tile layer
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '-ฎ OpenStreetMap contributors'
+  }).addTo(map);
+
+  renderMap();
+}
+
+function renderMap() {
+  if(!map) return;
+
+  // Clear existing scooter markers
+  Object.values(scooterMarkers).forEach(marker => map.removeLayer(marker));
+  scooterMarkers = {};
+
+  // Clear existing geofence circle
+  if(geofenceCircle) {
+    map.removeLayer(geofenceCircle);
+    geofenceCircle = null;
   }
 
-  function fetchHistory(id) {
-    fetch(SERVER + '/history/' + id)
-      .then(r => r.json())
-      .then(data => {
-        const historyDiv = document.getElementById('history-' + id);
-        const history = data.history || [];
-
-        // Keep the header row
-        let html = `
-          <div class="history-item">
-            <div class="history-time">Time</div>
-            <div class="history-value">Battery</div>
-            <div class="history-value">Speed</div>
-            <div class="history-value">Mode</div>
-          </div>
-        `;
-
-        // Add history entries (most recent first)
-        history.slice().reverse().forEach(entry => {
-          const time = new Date(entry.timestamp).toLocaleTimeString();
-          html += `
-            <div class="history-item">
-              <div class="history-time">${time}</div>
-              <div class="history-value">${entry.battery || 0}%</div>
-              <div class="history-value">${(entry.speed || 0).toFixed(1)} mph</div>
-              <div class="history-value">${entry.mode || '--'}</div>
-            </div>
-          `;
-        });
-
-        historyDiv.innerHTML = html;
-      })
-      .catch(e => console.log(e));
+  // Draw geofence circle
+  if(globalGeofence.enabled) {
+    geofenceCircle = L.circle([globalGeofence.centerLat, globalGeofence.centerLng], {
+      color: '#60A5FA',
+      fillColor: '#60A5FA',
+      fillOpacity: 0.1,
+      radius: globalGeofence.radius
+    }).addTo(map);
   }
 
-  function renderScooter(id, d) {
-    const bpct = d.battery || 0;
-    const online = d.online;
+  // Draw scooter markers
+  Object.keys(scooterGPS).forEach(scooterId => {
+    const gps = scooterGPS[scooterId];
+    const scooter = fleetData[scooterId];
+    const reg = scooterRegistry[scooterId];
 
-    return `
-    <div class="scooter-card ${online ? '' : 'offline'}">
-      <div class="card-header">
-        <div class="scooter-id">${id}</div>
-        <div class="status-badge ${online ? 'online' : 'offline'}">
-          ${online ? 'Online' : 'Offline'}
-        </div>
-      </div>
+    let color = '#10B981'; // Active
+    if(reg && reg.status === 'charging') color = '#F59E0B';
+    if(reg && reg.status === 'maintenance') color = '#EF4444';
+    if(scooter && !scooter.online) color = '#64748B';
 
-      <div class="telemetry-grid">
-        <div class="tel-item">
-          <div class="tel-label">Speed</div>
-          <div class="tel-value white">${(d.speed || 0).toFixed(1)}</div>
-          <div class="tel-unit">mph</div>
-        </div>
-        <div class="tel-item">
-          <div class="tel-label">Battery</div>
-          <div class="tel-value ${batteryClass(bpct)}">${bpct.toFixed(0)}</div>
-          <div class="tel-unit">%</div>
-        </div>
-        <div class="tel-item">
-          <div class="tel-label">Mode</div>
-          <div class="tel-value yellow">${d.mode || '--'}</div>
-          <div class="tel-unit">mode</div>
-        </div>
-        <div class="tel-item">
-          <div class="tel-label">Voltage</div>
-          <div class="tel-value blue">${(d.voltage || 0).toFixed(1)}</div>
-          <div class="tel-unit">V</div>
-        </div>
-        <div class="tel-item">
-          <div class="tel-label">Power</div>
-          <div class="tel-value ${d.power ? 'green' : 'red'}">${d.power ? 'ON' : 'OFF'}</div>
-          <div class="tel-unit">state</div>
-        </div>
-        <div class="tel-item">
-          <div class="tel-label">Brake</div>
-          <div class="tel-value ${d.brake ? 'red' : 'green'}">${d.brake ? 'ON' : 'OFF'}</div>
-          <div class="tel-unit">state</div>
-        </div>
-        <div class="tel-item">
-          <div class="tel-label">Light</div>
-          <div class="tel-value ${d.light ? 'yellow' : 'white'}">${d.light ? 'ON' : 'OFF'}</div>
-          <div class="tel-unit">light</div>
-        </div>
-      </div>
+    // Create custom icon
+    const icon = L.divIcon({
+      className: 'custom-marker',
+      html: `<div style="
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: ${color};
+        border: 2px solid #fff;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      "></div>`,
+      iconSize: [16, 16],
+      iconAnchor: [8, 8]
+    });
 
-      <div class="battery-bar">
-        <div class="battery-fill" style="width:${bpct}%; background:${batteryColor(bpct)}"></div>
-      </div>
+    const marker = L.marker([gps.lat, gps.lng], { icon: icon })
+      .bindPopup(`<b>${scooterId}</b><br>
+        Battery: ${scooter?.battery || 0}%<br>
+        Speed: ${scooter?.speed || 0} mph<br>
+        Status: ${scooter?.moving ? 'Moving' : 'Stopped'}`)
+      .addTo(map);
 
-      <div class="controls">
-        <button class="btn danger full ${d.brake ? 'active-red' : ''}" onclick="sendCommand('${id}','brakeOn')">
-          <div class="btn-icon">๐”’</div>Lock / Brake ON
-        </button>
-        <button class="btn success full ${!d.brake ? 'active-green' : ''}" onclick="sendCommand('${id}','brakeOff')">
-          <div class="btn-icon">๐”“</div>Unlock / Brake OFF
-        </button>
-        <button class="btn yellow" onclick="sendCommand('${id}','mode')">
-          <div class="btn-icon">โก</div>Cycle Mode
-        </button>
-        <button class="btn blue ${d.light ? 'active-yellow' : ''}" onclick="sendCommand('${id}','light')">
-          <div class="btn-icon">๐’ก</div>Toggle Light
-        </button>
-        <button class="btn" onclick="sendCommand('${id}','walk')">
-          <div class="btn-icon">๐ถ</div>Walk Mode
-        </button>
-        <button class="btn danger ${d.power ? 'active-green' : 'active-red'}" onclick="sendCommand('${id}','power')">
-          <div class="btn-icon">โป</div>Power ON/OFF
-        </button>
-      </div>
+    scooterMarkers[scooterId] = marker;
+  });
+}
 
-      <div class="last-seen">Last seen: ${timeSince(d.lastSeen)}</div>
+function getDistance(lat1, lng1, lat2, lng2) {
+  // Haversine formula for distance in meters
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLng/2) * Math.sin(dLng/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
 
-      <div class="history-section">
-        <div class="history-header">
-          <div class="history-title">History</div>
-          <button class="history-toggle" onclick="toggleHistory('${id}')">Show</button>
-        </div>
-        <div class="history-list" id="history-${id}" style="display: none;">
-          <div class="history-item">
-            <div class="history-time">Time</div>
-            <div class="history-value">Battery</div>
-            <div class="history-value">Speed</div>
-            <div class="history-value">Mode</div>
-          </div>
-        </div>
-      </div>
-    </div>`;
+function updateGeofenceRadius(value) {
+  globalGeofence.radius = parseInt(value);
+  document.getElementById('radius-value').textContent = value + 'm';
+  renderMap();
+}
+
+function toggleGeofence() {
+  const checkbox = document.getElementById('geofence-enabled');
+  globalGeofence.enabled = checkbox.checked;
+  renderMap();
+  addAlert('info', `Geofence ${globalGeofence.enabled ? 'enabled' : 'disabled'}`);
+}
+
+function simulateQRUnlock() {
+  const scooterId = prompt('Enter scooter ID to unlock (e.g., SCO-001):');
+  if(!scooterId || !fleetData[scooterId]) {
+    addAlert('danger', 'Invalid scooter ID');
+    return;
   }
 
-  function fetchFleet() {
-    fetch(SERVER + '/fleet')
-      .then(r => r.json())
-      .then(fleet => {
-        const container = document.getElementById('fleet');
-        const ids = Object.keys(fleet);
-
-        // Update status indicator
-        document.getElementById('status-dot').classList.remove('offline');
-        document.getElementById('status-text').textContent = 'Live';
-
-        // Update summary statistics
-        const total = ids.length;
-        const online = ids.filter(id => fleet[id].online).length;
-        const batteries = ids.map(id => fleet[id].battery || 0);
-        const avgBattery = batteries.length > 0 ? (batteries.reduce((a, b) => a + b, 0) / batteries.length).toFixed(0) : 0;
-        const locked = ids.filter(id => fleet[id].brake).length;
-
-        document.getElementById('summary-total').textContent = total;
-        document.getElementById('summary-online').textContent = online;
-        document.getElementById('summary-battery').textContent = avgBattery + '%';
-        document.getElementById('summary-locked').textContent = locked;
-
-        // Update battery chart
-        updateChart(fleet);
-
-        if (ids.length === 0) {
-          container.innerHTML = '<div class="no-scooters">No scooters connected yet</div>';
-          return;
-        }
-
-        container.innerHTML = ids
-          .map(id => renderScooter(id, fleet[id]))
-          .join('');
-      })
-      .catch(() => {
-        document.getElementById('fleet').innerHTML =
-          '<div class="no-scooters">Cannot reach server</div>';
-        document.getElementById('status-dot').classList.add('offline');
-        document.getElementById('status-text').textContent = 'Offline';
-      });
+  const riderId = prompt('Enter rider ID (e.g., RIDER-001):');
+  if(!riderId || !riderAccounts[riderId]) {
+    addAlert('danger', 'Invalid rider ID');
+    return;
   }
 
-  setInterval(fetchFleet, 1000);
-  fetchFleet();
-  initChart();
+  // Assign scooter to rider
+  assignScooterToRider(riderId, scooterId);
+  addAlert('info', `QR unlock: ${scooterId} assigned to ${riderId}`);
+}
+
+function renderMapPage() {
+  initMap();
+  // Update geofence UI values
+  document.getElementById('geofence-enabled').checked = globalGeofence.enabled;
+  document.getElementById('geofence-radius').value = globalGeofence.radius;
+  document.getElementById('radius-value').textContent = globalGeofence.radius + 'm';
+}
+
+// ิ๖วิ๖ว Trip Route Replay ิ๖วิ๖ว
+function replayTripRoute(scooterId) {
+  const gps = scooterGPS[scooterId];
+  if(!gps || !gps.trail || gps.trail.length === 0) {
+    addAlert('warn', `No GPS trail data for ${scooterId}`);
+    return;
+  }
+
+  let index = 0;
+  const replayInterval = setInterval(() => {
+    if(index >= gps.trail.length) {
+      clearInterval(replayInterval);
+      addAlert('info', `Trip replay complete for ${scooterId}`);
+      return;
+    }
+
+    const point = gps.trail[index];
+    gps.lat = point.lat;
+    gps.lng = point.lng;
+    renderMap();
+    index++;
+  }, 100);
+
+  addAlert('info', `Replaying trip route for ${scooterId}...`);
+}
+
+// ิ๖วิ๖ว Rider App Telemetry View ิ๖วิ๖ว
+function showRiderTelemetry(riderId) {
+  const rider = riderAccounts[riderId];
+  if(!rider) return;
+
+  const assignedScooters = rider.assignedScooters || [];
+  if(assignedScooters.length === 0) {
+    addAlert('warn', `${riderId} has no assigned scooters`);
+    return;
+  }
+
+  let telemetry = `Rider: ${rider.name}\n`;
+  assignedScooters.forEach(scooterId => {
+    const scooter = fleetData[scooterId];
+    if(scooter) {
+      telemetry += `\n${scooterId}:\n`;
+      telemetry += `  Battery: ${scooter.battery}%\n`;
+      telemetry += `  Speed: ${scooter.speed} mph\n`;
+      telemetry += `  Mode: ${scooter.mode}\n`;
+      telemetry += `  Status: ${scooter.moving ? 'Moving' : 'Stopped'}\n`;
+    }
+  });
+
+  alert(telemetry);
+}
+
+// ิ๖วิ๖ว End-of-Ride Reporting ิ๖วิ๖ว
+function endRideReport(scooterId, riderId) {
+  const rider = riderAccounts[riderId];
+  if(!rider) return;
+
+  const session = rider.sessions[scooterId];
+  if(!session || !session.active) {
+    addAlert('warn', `No active session for ${scooterId}`);
+    return;
+  }
+
+  const duration = session.startTime ? Math.floor((Date.now() - session.startTime) / 60000) : 0;
+  const scooter = fleetData[scooterId];
+  const distance = duration * (scooter?.speed || 0) / 60;
+
+  const report = `Ride Report\n`;
+  report += `Scooter: ${scooterId}\n`;
+  report += `Rider: ${rider.name}\n`;
+  report += `Duration: ${duration} minutes\n`;
+  report += `Distance: ${distance.toFixed(2)} miles\n`;
+  report += `End Battery: ${scooter?.battery || 0}%\n`;
+
+  if(confirm(report + '\nConfirm ride end?')) {
+    endRiderSession(riderId, scooterId);
+    addAlert('info', `Ride confirmed for ${riderId}`);
+  }
+}
 </script>
 </body>
 </html>

@@ -1,0 +1,137 @@
+
+<h2 class="sr-only">Feature plan for the scooter fleet management dashboard, organized into six modules across three build phases.</h2>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.plan{padding:1rem 0}
+.phase-row{display:flex;align-items:center;gap:10px;margin:0 0 10px}
+.phase-label{font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px}
+.phase-1{background:#E1F5EE;color:#085041}
+.phase-2{background:#E6F1FB;color:#0C447C}
+.phase-3{background:#FAEEDA;color:#633806}
+.phase-line{flex:1;height:0.5px;background:var(--color-border-tertiary)}
+.modules{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:10px;margin-bottom:1.5rem}
+.mod{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden}
+.mod-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.mod-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.ic-teal{background:#E1F5EE;color:#085041}
+.ic-blue{background:#E6F1FB;color:#0C447C}
+.ic-amber{background:#FAEEDA;color:#633806}
+.ic-purple{background:#EEEDFE;color:#3C3489}
+.ic-coral{background:#FAECE7;color:#712B13}
+.ic-gray{background:var(--color-background-secondary);color:var(--color-text-secondary)}
+.mod-title{font-size:13px;font-weight:500;color:var(--color-text-primary)}
+.mod-sub{font-size:11px;color:var(--color-text-secondary);margin-top:1px}
+.feat-list{padding:8px 0}
+.feat{display:flex;align-items:flex-start;gap:9px;padding:7px 14px;cursor:pointer;transition:background .12s}
+.feat:hover{background:var(--color-background-secondary)}
+.feat-check{width:16px;height:16px;border-radius:4px;border:0.5px solid var(--color-border-secondary);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;font-size:10px;color:var(--color-text-success)}
+.feat-check.done{background:var(--color-background-success);border-color:var(--color-border-success)}
+.feat-check.soon{background:var(--color-background-info);border-color:var(--color-border-info);color:var(--color-text-info)}
+.feat-check.later{background:var(--color-background-warning);border-color:var(--color-border-warning);color:var(--color-text-warning)}
+.feat-body{}
+.feat-name{font-size:12px;color:var(--color-text-primary)}
+.feat-desc{font-size:11px;color:var(--color-text-secondary);margin-top:2px;line-height:1.45}
+.legend{display:flex;gap:16px;margin-bottom:1.25rem;flex-wrap:wrap}
+.leg{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--color-text-secondary)}
+.leg-sq{width:14px;height:14px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:8px}
+.ask-btn{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:1.25rem;padding:10px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);font-size:13px;color:var(--color-text-secondary);cursor:pointer;transition:all .15s;font-family:var(--font-sans);width:100%}
+.ask-btn:hover{background:var(--color-background-primary);border-color:var(--color-border-secondary);color:var(--color-text-primary)}
+</style>
+
+<div class="plan">
+  <div class="legend">
+    <span class="leg"><span class="leg-sq" style="background:#E1F5EE;color:#085041"><i class="ti ti-check" style="font-size:8px"></i></span>Already built</span>
+    <span class="leg"><span class="leg-sq" style="background:#E6F1FB;color:#0C447C"><i class="ti ti-dots" style="font-size:8px"></i></span>Build next</span>
+    <span class="leg"><span class="leg-sq" style="background:#FAEEDA;color:#633806"><i class="ti ti-clock" style="font-size:8px"></i></span>Build later (after LoRa)</span>
+  </div>
+
+  <div class="phase-row"><span class="phase-label phase-1">Phase 1 — Core operations</span><span class="phase-line"></span></div>
+  <div class="modules">
+    <div class="mod">
+      <div class="mod-head">
+        <div class="mod-icon ic-teal"><i class="ti ti-layout-dashboard" aria-hidden="true"></i></div>
+        <div><div class="mod-title">Live telemetry dashboard</div><div class="mod-sub">What you have now</div></div>
+      </div>
+      <div class="feat-list">
+        <div class="feat"><div class="feat-check done"><i class="ti ti-check" style="font-size:9px"></i></div><div class="feat-body"><div class="feat-name">Per-scooter telemetry cards</div><div class="feat-desc">Speed, battery, voltage, mode, brake, light</div></div></div>
+        <div class="feat"><div class="feat-check done"><i class="ti ti-check" style="font-size:9px"></i></div><div class="feat-body"><div class="feat-name">Fleet summary metrics</div><div class="feat-desc">Online count, avg battery, locked count</div></div></div>
+        <div class="feat"><div class="feat-check done"><i class="ti ti-check" style="font-size:9px"></i></div><div class="feat-body"><div class="feat-name">Remote controls per scooter</div><div class="feat-desc">Lock, unlock, mode, light, walk, power</div></div></div>
+        <div class="feat"><div class="feat-check soon"><i class="ti ti-dots" style="font-size:9px"></i></div><div class="feat-body"><div class="feat-name">Broadcast commands</div><div class="feat-desc">Lock ALL / Unlock ALL with one button</div></div></div>
+        <div class="feat"><div class="feat-check soon"><i class="ti ti-dots" style="font-size:9px"></i></div><div class="feat-body"><div class="feat-name">Sort &amp; filter scooters</div><div class="feat-desc">By battery level, status, mode, or ID</div></div></div>
+      </div>
+    </div>
+    <div class="mod">
+      <div class="mod-head">
+        <div class="mod-icon ic-blue"><i class="ti ti-bell" aria-hidden="true"></i></div>
+        <div><div class="mod-title">Alerts &amp; notifications</div><div class="mod-sub">Know before problems escalate</div></div>
+      </div>
+      <div class="feat-list">
+        <div class="feat"><div class="feat-check soon"><i class="ti ti-dots" style="font-size:9px"></i></div><div class="feat-body"><div class="feat-name">Low battery warning</div><div class="feat-desc">Flag scooters below 20% on the dashboard</div></div></div>
+        <div class="feat"><div class="feat-check soon"><i class="ti ti-dots" style="font-size:9px"></i></div><div class="feat-body"><div class="feat-name">Offline alert</div><div class="feat-desc">Visual indicator when a scooter drops off WiFi</div></div></div>
+        <div class="feat"><div class="feat-check soon"><i class="ti ti-dots" style="font-size:9px"></i></div><div class="feat-body"><div class="feat-name">Alert log panel</div><div class="feat-desc">Running list of events — went offline, low battery, locked</div></div></div>
+        <div class="feat"><div class="feat-check later"><i class="ti ti-clock" style="font-size:9px"></i></div><div class="feat-body"><div class="feat-name">Push / SMS alerts</div><div class="feat-desc">Notify manager phone when critical event occurs</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="phase-row"><span class="phase-label phase-2">Phase 2 — Fleet intelligence</span><span class="phase-line"></span></div>
+  <div class="modules">
+    <div class="mod">
+      <div class="mod-head">
+        <div class="mod-icon ic-purple"><i class="ti ti-chart-line" aria-hidden="true"></i></div>
+        <div><div class="mod-title">History &amp; analytics</div><div class="mod-sub">Understand usage patterns</div></div>
+      </div>
+      <div class="feat-list">
+        <div class="feat"><div class="feat-check soon"><i class="ti ti-dots" style="font-size:9px"></i></div><div class="feat-body"><div class="feat-name">Ride session logging</div><div class="feat-desc">Server saves each trip — start time, duration, distance</div></div></div>
+        <div class="feat"><div class="feat-check soon"><i class="ti ti-dots" style="font-size:9px"></i></div><div class="feat-body"><div class="feat-name">Battery discharge tracking</div><div class="feat-desc">Graph battery % over time per scooter</div></div></div>
+        <div class="feat"><div class="feat-check soon"><i class="ti ti-dots" style="font-size:9px"></i></div><div class="feat-body"><div class="feat-name">Usage heatmap</div><div class="feat-desc">Which hours of day each scooter is most active</div></div></div>
+        <div class="feat"><div class="feat-check soon"><i class="ti ti-dots" style="font-size:9px"></i></div><div class="feat-body"><div class="feat-name">Per-scooter health score</div><div class="feat-desc">Flag scooters with abnormal voltage or speed readings</div></div></div>
+      </div>
+    </div>
+    <div class="mod">
+      <div class="mod-head">
+        <div class="mod-icon ic-amber"><i class="ti ti-users" aria-hidden="true"></i></div>
+        <div><div class="mod-title">Fleet &amp; user management</div><div class="mod-sub">Register and control access</div></div>
+      </div>
+      <div class="feat-list">
+        <div class="feat"><div class="feat-check soon"><i class="ti ti-dots" style="font-size:9px"></i></div><div class="feat-body"><div class="feat-name">Scooter registry</div><div class="feat-desc">Assign names, notes, and status tags (active, charging, maintenance)</div></div></div>
+        <div class="feat"><div class="feat-check soon"><i class="ti ti-dots" style="font-size:9px"></i></div><div class="feat-body"><div class="feat-name">Maintenance mode</div><div class="feat-desc">Mark a scooter as out-of-service, hide from rider app</div></div></div>
+        <div class="feat"><div class="feat-check soon"><i class="ti ti-dots" style="font-size:9px"></i></div><div class="feat-body"><div class="feat-name">Speed limit per scooter</div><div class="feat-desc">Lock a scooter to ECO or D mode remotely</div></div></div>
+        <div class="feat"><div class="feat-check later"><i class="ti ti-clock" style="font-size:9px"></i></div><div class="feat-body"><div class="feat-name">Rider accounts</div><div class="feat-desc">Login, assign scooter to rider, end session remotely</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="phase-row"><span class="phase-label phase-3">Phase 3 — After LoRa upgrade</span><span class="phase-line"></span></div>
+  <div class="modules">
+    <div class="mod">
+      <div class="mod-head">
+        <div class="mod-icon ic-coral"><i class="ti ti-map-pin" aria-hidden="true"></i></div>
+        <div><div class="mod-title">Live map &amp; tracking</div><div class="mod-sub">Requires GPS on each scooter</div></div>
+      </div>
+      <div class="feat-list">
+        <div class="feat"><div class="feat-check later"><i class="ti ti-clock" style="font-size:9px"></i></div><div class="feat-body"><div class="feat-name">Live map view</div><div class="feat-desc">All scooters shown as dots on a campus/town map</div></div></div>
+        <div class="feat"><div class="feat-check later"><i class="ti ti-clock" style="font-size:9px"></i></div><div class="feat-body"><div class="feat-name">Geofence zones</div><div class="feat-desc">Auto-lock when scooter leaves allowed area</div></div></div>
+        <div class="feat"><div class="feat-check later"><i class="ti ti-clock" style="font-size:9px"></i></div><div class="feat-body"><div class="feat-name">Trip route replay</div><div class="feat-desc">Replay a trip on map from GPS trail data</div></div></div>
+        <div class="feat"><div class="feat-check later"><i class="ti ti-clock" style="font-size:9px"></i></div><div class="feat-body"><div class="feat-name">Find nearest scooter</div><div class="feat-desc">Rider-facing feature — show closest available unit</div></div></div>
+      </div>
+    </div>
+    <div class="mod">
+      <div class="mod-head">
+        <div class="mod-icon ic-gray"><i class="ti ti-device-mobile" aria-hidden="true"></i></div>
+        <div><div class="mod-title">Rider-facing app</div><div class="mod-sub">Separate from management console</div></div>
+      </div>
+      <div class="feat-list">
+        <div class="feat"><div class="feat-check later"><i class="ti ti-clock" style="font-size:9px"></i></div><div class="feat-body"><div class="feat-name">Scan-to-ride QR unlock</div><div class="feat-desc">Rider scans QR on scooter, sends unlock command</div></div></div>
+        <div class="feat"><div class="feat-check later"><i class="ti ti-clock" style="font-size:9px"></i></div><div class="feat-body"><div class="feat-name">Rider speed &amp; battery view</div><div class="feat-desc">Simple read-only telemetry for the person riding</div></div></div>
+        <div class="feat"><div class="feat-check later"><i class="ti ti-clock" style="font-size:9px"></i></div><div class="feat-body"><div class="feat-name">End-of-ride reporting</div><div class="feat-desc">Rider confirms return, triggers re-lock</div></div></div>
+        <div class="feat"><div class="feat-check later"><i class="ti ti-clock" style="font-size:9px"></i></div><div class="feat-body"><div class="feat-name">Trip history for rider</div><div class="feat-desc">Distance, duration, battery used per trip</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <button class="ask-btn" onclick="sendPrompt('Let\'s build the alerts panel and broadcast lock/unlock buttons next')">
+    <i class="ti ti-arrow-right" style="font-size:14px" aria-hidden="true"></i>
+    Start building phase 2 features ↗
+  </button>
+</div>

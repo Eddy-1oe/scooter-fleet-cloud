@@ -2,7 +2,7 @@
 #include "soc/rtc_cntl_reg.h"
 #include <HardwareSerial.h>
 #include <SoftwareSerial.h>
-#include <TinyGPSPlus.h>
+#include <TinyGPS++.h>
 #include <WiFi.h>
 #include <WiFiManager.h>
 #include <HTTPClient.h>
@@ -238,8 +238,10 @@ void executeCommand(String action) {
 // GPS READING
 // ==========================================
 void readGPS() {
-  while (gpsSerial.available())
-    gps.encode(gpsSerial.read());
+  while (gpsSerial.available()) {
+    char c = gpsSerial.read();
+    gps.encode(c);
+  }
 
   if (gps.location.isValid()) {
     scooter.gps.valid     = true;
@@ -261,6 +263,10 @@ void readGPS() {
              "%04u-%02u-%02uT%02u:%02u:%02uZ",
              gps.date.year(), gps.date.month(),  gps.date.day(),
              gps.time.hour(), gps.time.minute(), gps.time.second());
+  }
+
+  if (millis() > 10000 && gps.charsProcessed() < 10) {
+    Serial.println("[GPS] No data — check wiring: TX->D14, RX->D13");
   }
 }
 

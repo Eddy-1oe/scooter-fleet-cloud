@@ -277,6 +277,53 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
 .login-error{text-align:center;color:var(--red);font-size:13px;margin-top:16px;min-height:20px}
 .app-shell{display:none}
 .app-shell.visible{display:grid}
+
+/* ── GPS row on fleet cards ── */
+.gps-row{padding:5px 14px 8px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;border-top:1px solid var(--border)}
+.gps-pill{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;letter-spacing:.02em;white-space:nowrap}
+.gps-pill.fix{background:rgba(16,185,129,.1);color:var(--green);border:1px solid rgba(16,185,129,.2)}
+.gps-pill.nofix{background:rgba(100,116,139,.1);color:var(--text-tertiary);border:1px solid rgba(100,116,139,.18)}
+.gps-pill.acc-good{background:rgba(16,185,129,.1);color:var(--green);border:1px solid rgba(16,185,129,.2)}
+.gps-pill.acc-ok{background:rgba(245,158,11,.1);color:var(--amber);border:1px solid rgba(245,158,11,.2)}
+.gps-pill.acc-poor{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.2)}
+.gps-coords{font-size:10px;font-family:var(--mono);color:var(--text-tertiary);margin-left:auto}
+
+/* ── GPS status table ── */
+.gps-tbl{width:100%;border-collapse:collapse}
+.gps-tbl th{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-tertiary);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+.gps-tbl td{font-size:12px;padding:10px 10px;border-bottom:1px solid var(--border);vertical-align:middle;font-family:var(--mono)}
+.gps-tbl tr:last-child td{border-bottom:none}
+.gps-tbl tr:hover td{background:rgba(255,255,255,.02)}
+.gtv-good{color:var(--green)}
+.gtv-ok{color:var(--amber)}
+.gtv-bad{color:var(--red)}
+.gtv-dim{color:var(--text-tertiary)}
+.gps-fix-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px}
+.gps-fix-badge.on{background:rgba(16,185,129,.12);color:var(--green);border:1px solid rgba(16,185,129,.2)}
+.gps-fix-badge.off{background:rgba(100,116,139,.1);color:var(--text-tertiary);border:1px solid rgba(100,116,139,.18)}
+
+/* ── Leaflet popup — dark theme ── */
+.leaflet-popup-content-wrapper{background:#111827!important;color:#F1F5F9!important;border:1px solid #1E293B!important;border-radius:12px!important;box-shadow:0 12px 40px rgba(0,0,0,.7)!important;padding:0!important;overflow:hidden}
+.leaflet-popup-content{margin:0!important}
+.leaflet-popup-tip{background:#111827!important}
+.gps-popup{font-family:'DM Sans',sans-serif;min-width:230px;max-width:280px}
+.gps-popup-hd{padding:12px 14px 10px;border-bottom:1px solid #1E293B;display:flex;align-items:center;justify-content:space-between}
+.gps-popup-hd-id{font-size:14px;font-weight:600;color:#F1F5F9}
+.gps-popup-hd-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px}
+.gps-popup-sec{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#334155;padding:8px 14px 3px}
+.gps-popup-row{display:flex;justify-content:space-between;align-items:center;padding:3px 14px;font-size:12px}
+.gps-popup-lbl{color:#64748B}
+.gps-popup-val{font-family:'DM Mono',monospace;font-size:11px;color:#CBD5E1;text-align:right}
+.gps-popup-val.c-green{color:#10B981}
+.gps-popup-val.c-blue{color:#60A5FA}
+.gps-popup-val.c-amber{color:#F59E0B}
+.gps-popup-val.c-red{color:#EF4444}
+.gps-popup-val.c-purple{color:#A78BFA}
+.gps-popup-footer{padding:6px 14px 10px;margin-top:4px;border-top:1px solid #1E293B}
+
+/* ── Pulsing ring for moving scooters ── */
+@keyframes gps-pulse{0%{box-shadow:0 0 0 0 rgba(59,130,246,.5)}70%{box-shadow:0 0 0 8px rgba(59,130,246,0)}100%{box-shadow:0 0 0 0 rgba(59,130,246,0)}}
+.marker-moving{animation:gps-pulse 2s infinite}
 </style>
 </head>
 <body>
@@ -745,8 +792,9 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
           <div id="map-legend" style="position:absolute;bottom:16px;left:16px;background:var(--navy-2);padding:12px;border-radius:8px;border:1px solid var(--border);font-size:11px;z-index:1000">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="width:10px;height:10px;border-radius:50%;background:#10B981"></span> Active</div>
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="width:10px;height:10px;border-radius:50%;background:#F59E0B"></span> Charging</div>
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="width:10px;height:10px;border-radius:50%;background:#EF4444"></span> Maintenance</div>
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="width:10px;height:10px;border-radius:50%;background:#60A5FA"></span> Geofence zone</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="width:10px;height:10px;border-radius:50%;background:#EF4444"></span> Locked / Maintenance</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="width:10px;height:10px;border-radius:50%;background:#60A5FA;opacity:.4"></span> Geofence zone</div>
+            <div style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;border:2px solid #60A5FA;background:rgba(96,165,250,.15)"></span> Reference point</div>
           </div>
         </div>
       </div>
@@ -754,26 +802,60 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
       <div class="card">
         <div class="card-hd">
           <span class="card-title"><i class="ti ti-map-pin"></i> Geofence Settings</span>
+          <button id="geofence-pick-btn" class="btn btn-ghost" onclick="toggleGeofencePickMode()" style="padding:6px 12px;font-size:12px">
+            <i class="ti ti-map-pin"></i> Set reference point
+          </button>
         </div>
+
+        <!-- Pick-mode instruction banner -->
+        <div id="geofence-pick-hint" style="display:none;align-items:center;gap:10px;padding:10px 20px;background:rgba(245,158,11,.08);border-bottom:1px solid rgba(245,158,11,.2)">
+          <i class="ti ti-hand-finger" style="color:var(--amber);font-size:16px;flex-shrink:0"></i>
+          <span style="font-size:12px;color:var(--amber);font-weight:500">Click anywhere on the map above to set the geofence center point</span>
+        </div>
+
         <div style="padding:20px">
+          <!-- Current center -->
+          <div style="margin-bottom:16px;padding:12px 14px;background:var(--navy-3);border:1px solid var(--border-light);border-radius:8px;display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:4px">Reference point</div>
+              <div id="geofence-center-coords" style="font-size:13px;font-family:var(--mono);color:var(--text-primary)">Not set — click "Set reference point"</div>
+            </div>
+            <i class="ti ti-current-location" style="font-size:20px;color:var(--accent);opacity:.6"></i>
+          </div>
+
+          <!-- Enable toggle -->
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
             <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-primary)">
-              <input type="checkbox" id="geofence-enabled" onchange="toggleGeofence()" ${globalGeofence.enabled ? 'checked' : ''}>
-              Enable geofence
+              <input type="checkbox" id="geofence-enabled" onchange="toggleGeofence()">
+              Enable geofence enforcement
             </label>
           </div>
-          <div style="margin-bottom:16px">
-            <label style="display:block;font-size:12px;color:var(--text-secondary);margin-bottom:8px">Radius (meters)</label>
-            <input type="range" id="geofence-radius" min="100" max="2000" step="50" value="${globalGeofence.radius}" onchange="updateGeofenceRadius(this.value)" style="width:100%">
-            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-tertiary);margin-top:4px">
-              <span>100m</span>
-              <span id="radius-value">${globalGeofence.radius}m</span>
-              <span>2000m</span>
+
+          <!-- Radius slider -->
+          <div style="margin-bottom:4px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <label style="font-size:12px;color:var(--text-secondary)">Radius</label>
+              <span id="radius-value" style="font-size:13px;font-weight:600;color:var(--accent);font-family:var(--mono)">500 m</span>
+            </div>
+            <input type="range" id="geofence-radius" min="100" max="5000" step="50" value="500" onchange="updateGeofenceRadius(this.value)" style="width:100%">
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-tertiary);margin-top:4px">
+              <span>100 m</span><span>5 000 m</span>
             </div>
           </div>
-          <div style="font-size:11px;color:var(--text-tertiary)">
-            All scooters must operate within this radius from the center point (${globalGeofence.centerLat.toFixed(4)}, ${globalGeofence.centerLng.toFixed(4)})
+
+          <div id="geofence-status-note" style="margin-top:14px;font-size:11px;color:var(--text-tertiary)">
+            Set a reference point on the map, then enable enforcement. Scooters leaving the radius will be auto-locked.
           </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd">
+          <span class="card-title"><i class="ti ti-satellite"></i> Live GPS Status</span>
+          <span style="font-size:11px;color:var(--text-tertiary);font-family:var(--mono)" id="gps-table-ts"></span>
+        </div>
+        <div style="padding:0 20px 8px" id="gps-status-table">
+          <div class="alerts-empty">Waiting for GPS data…</div>
         </div>
       </div>
     </div>
@@ -1106,6 +1188,23 @@ function renderFleet(fleet) {
         </div>
         <div class="batt-track"><div class="batt-fill" style="width:${bp}%;background:${battColor(bp)}"></div></div>
       </div>
+      ${(()=>{
+        const g = d.gps;
+        if(g && g.valid) {
+          const hdopCls = g.hdop <= 1.5 ? 'acc-good' : g.hdop <= 3 ? 'acc-ok' : 'acc-poor';
+          const hdopLbl = g.hdop <= 1.5 ? 'Excellent' : g.hdop <= 3 ? 'Good' : 'Poor';
+          const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+          const compassDir = g.heading != null ? dirs[Math.round(g.heading/45)%8] : null;
+          return `<div class="gps-row">
+            <span class="gps-pill fix"><i class="ti ti-satellite" style="font-size:9px"></i>&nbsp;${g.satellites} sats</span>
+            <span class="gps-pill ${hdopCls}">±${parseFloat(g.hdop).toFixed(1)} ${hdopLbl}</span>
+            ${g.alt != null ? `<span style="font-size:10px;color:var(--text-tertiary);font-family:var(--mono)">${parseFloat(g.alt).toFixed(0)}m</span>` : ''}
+            ${compassDir ? `<span style="font-size:10px;color:var(--text-tertiary);font-family:var(--mono)">${parseFloat(g.heading).toFixed(0)}°&thinsp;${compassDir}</span>` : ''}
+            <span class="gps-coords">${parseFloat(g.lat).toFixed(4)},&thinsp;${parseFloat(g.lng).toFixed(4)}</span>
+          </div>`;
+        }
+        return `<div class="gps-row"><span class="gps-pill nofix"><i class="ti ti-satellite-off" style="font-size:9px"></i>&nbsp;No GPS fix</span></div>`;
+      })()}
       <div class="ctrl-grid">
         <button class="ctrl-btn danger span2" onclick="sendCmd('${id}','brakeOn')" aria-label="Lock ${id}"><i class="ti ti-lock"></i>Lock / Brake ON</button>
         <button class="ctrl-btn success span2" onclick="sendCmd('${id}','brakeOff')" aria-label="Unlock ${id}"><i class="ti ti-lock-open"></i>Unlock / Brake OFF</button>
@@ -2217,24 +2316,83 @@ function fetchFleet() {
     });
     checkAlerts(fleetData);
     renderFleet(fleetData);
-    // Refresh map if on map page
     if(document.getElementById('page-map').classList.contains('active')) {
       renderMap();
+      renderGpsStatusTable();
     }
     document.getElementById('conn-dot').className='conn-dot';
     document.getElementById('conn-status').textContent='demo mode';
     return;
   }
   fetch(SERVER+'/fleet').then(r=>r.json()).then(fleet=>{
+    const hasRealScooters = Object.keys(fleet).length > 0;
+
+    // Keep demo cards visible until at least one real scooter connects
+    if(!hasRealScooters) {
+      document.getElementById('conn-dot').className = 'conn-dot live';
+      document.getElementById('conn-status').textContent = 'live — waiting for scooters';
+      return;
+    }
+
     checkAlerts(fleet);
-    fleetData=fleet;
-    demoMode=false;
-    document.getElementById('conn-dot').className='conn-dot live';
-    document.getElementById('conn-status').textContent='live';
+    fleetData = fleet;
+    demoMode = false;
+
+    // Bridge GPS data from live telemetry into scooterGPS for map rendering
+    let firstRealFix = !Object.keys(scooterGPS).some(id => scooterGPS[id]._real);
+    Object.keys(fleet).forEach(id => {
+      const g = fleet[id]?.gps;
+      if(!g || !g.valid) return;
+      const lat = parseFloat(g.lat), lng = parseFloat(g.lng);
+      if(isNaN(lat) || isNaN(lng)) return;
+
+      if(!scooterGPS[id]) scooterGPS[id] = { trail: [], _real: true };
+      scooterGPS[id]._real = true;
+      scooterGPS[id].lat = lat;
+      scooterGPS[id].lng = lng;
+      scooterGPS[id].lastUpdate = Date.now();
+
+      // Append trail point only when position has moved
+      const trail = scooterGPS[id].trail;
+      const last = trail[trail.length - 1];
+      if(!last || Math.abs(last.lat - lat) > 0.000015 || Math.abs(last.lng - lng) > 0.000015) {
+        trail.push({ lat, lng, timestamp: Date.now() });
+        if(trail.length > 200) scooterGPS[id].trail = trail.slice(-200);
+      }
+
+      // On very first real GPS fix: pan map to actual location
+      if(firstRealFix) {
+        firstRealFix = false;
+        if(map) map.setView([lat, lng], 16);
+        addAlert('info', `GPS fix acquired — map panned to ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+      }
+
+      // Live geofence check
+      if(globalGeofence.enabled) {
+        const dist = getDistance(lat, lng, globalGeofence.centerLat, globalGeofence.centerLng);
+        const wasViolating = prevStates[id]?.geofenceViolation;
+        if(dist > globalGeofence.radius && !wasViolating) {
+          fleet[id].brake = true;
+          addAlert('warn', `${id} — left geofence zone (${dist.toFixed(0)} m from center), auto-locked`);
+          if(!prevStates[id]) prevStates[id] = {};
+          prevStates[id].geofenceViolation = true;
+        } else if(dist <= globalGeofence.radius && wasViolating) {
+          prevStates[id].geofenceViolation = false;
+          addAlert('info', `${id} — re-entered geofence zone`);
+        }
+      }
+    });
+
+    document.getElementById('conn-dot').className = 'conn-dot live';
+    document.getElementById('conn-status').textContent = 'live';
     renderFleet(fleet);
+    if(document.getElementById('page-map').classList.contains('active')) {
+      renderMap();
+      renderGpsStatusTable();
+    }
   }).catch(()=>{
-    document.getElementById('conn-dot').className='conn-dot err';
-    document.getElementById('conn-status').textContent='offline';
+    document.getElementById('conn-dot').className = 'conn-dot err';
+    document.getElementById('conn-status').textContent = 'offline';
   });
 }
 
@@ -2249,17 +2407,22 @@ renderFleet(fleetData);
 let map = null;
 let scooterMarkers = {};
 let geofenceCircle = null;
+let centerMarker = null;
+let geofencePickMode = false;
 
 function initMap() {
   if(map) return;
 
-  // Initialize Leaflet map
   map = L.map('map').setView([globalGeofence.centerLat, globalGeofence.centerLng], 14);
-
-  // Add OpenStreetMap tile layer
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors'
   }).addTo(map);
+
+  // Click-to-set geofence reference point
+  map.on('click', function(e) {
+    if(!geofencePickMode) return;
+    setGeofenceCenter(e.latlng.lat, e.latlng.lng);
+  });
 
   renderMap();
 }
@@ -2267,60 +2430,123 @@ function initMap() {
 function renderMap() {
   if(!map) return;
 
-  // Clear existing scooter markers
-  Object.values(scooterMarkers).forEach(marker => map.removeLayer(marker));
-  scooterMarkers = {};
+  // Remove markers for scooters no longer tracked
+  Object.keys(scooterMarkers).forEach(id => {
+    if(!scooterGPS[id]) { map.removeLayer(scooterMarkers[id]); delete scooterMarkers[id]; }
+  });
 
-  // Clear existing geofence circle
-  if(geofenceCircle) {
-    map.removeLayer(geofenceCircle);
-    geofenceCircle = null;
-  }
-
-  // Draw geofence circle
-  if(globalGeofence.enabled) {
+  // Geofence circle
+  if(geofenceCircle) { map.removeLayer(geofenceCircle); geofenceCircle = null; }
+  const centerIsSet = !(globalGeofence.centerLat === 40.7128 && globalGeofence.centerLng === -74.0060);
+  if(globalGeofence.enabled && centerIsSet) {
     geofenceCircle = L.circle([globalGeofence.centerLat, globalGeofence.centerLng], {
-      color: '#60A5FA',
-      fillColor: '#60A5FA',
-      fillOpacity: 0.1,
+      color:'#60A5FA', fillColor:'#60A5FA', fillOpacity:.06, weight:1.5,
       radius: globalGeofence.radius
     }).addTo(map);
   }
 
-  // Draw scooter markers
-  Object.keys(scooterGPS).forEach(scooterId => {
-    const gps = scooterGPS[scooterId];
-    const scooter = fleetData[scooterId];
-    const reg = scooterRegistry[scooterId];
-
-    let color = '#10B981'; // Active
-    if(reg && reg.status === 'charging') color = '#F59E0B';
-    if(reg && reg.status === 'maintenance') color = '#EF4444';
-    if(scooter && !scooter.online) color = '#64748B';
-
-    // Create custom icon
-    const icon = L.divIcon({
-      className: 'custom-marker',
+  // Reference point marker
+  if(centerMarker) { map.removeLayer(centerMarker); centerMarker = null; }
+  if(centerIsSet) {
+    const cIcon = L.divIcon({
+      className: '',
       html: `<div style="
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        background: ${color};
-        border: 2px solid #fff;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-      "></div>`,
-      iconSize: [16, 16],
-      iconAnchor: [8, 8]
+        width:22px;height:22px;border-radius:50%;
+        border:2.5px solid #60A5FA;
+        background:rgba(96,165,250,.18);
+        display:flex;align-items:center;justify-content:center;
+        box-shadow:0 0 0 4px rgba(96,165,250,.1);
+      "><div style="width:5px;height:5px;border-radius:50%;background:#60A5FA"></div></div>`,
+      iconSize:[22,22], iconAnchor:[11,11]
     });
-
-    const marker = L.marker([gps.lat, gps.lng], { icon: icon })
-      .bindPopup(`<b>${scooterId}</b><br>
-        Battery: ${scooter?.battery || 0}%<br>
-        Speed: ${scooter?.speed || 0} mph<br>
-        Status: ${scooter?.moving ? 'Moving' : 'Stopped'}`)
+    centerMarker = L.marker([globalGeofence.centerLat, globalGeofence.centerLng], {icon:cIcon, zIndexOffset:-100})
+      .bindTooltip(`Geofence center<br>${globalGeofence.centerLat.toFixed(5)}, ${globalGeofence.centerLng.toFixed(5)}`, {direction:'top', className:'leaflet-tooltip'})
       .addTo(map);
+  }
 
-    scooterMarkers[scooterId] = marker;
+  const compassDir = deg => ['N','NE','E','SE','S','SW','W','NW'][Math.round(deg/45)%8];
+
+  Object.keys(scooterGPS).forEach(id => {
+    const pos     = scooterGPS[id];
+    const scooter = fleetData[id];
+    const reg     = scooterRegistry[id];
+    const live    = fleetData[id]?.gps;   // full GPS object from firmware
+
+    // Marker colour
+    let color = '#10B981';
+    if(reg?.status === 'charging')    color = '#F59E0B';
+    if(reg?.status === 'maintenance') color = '#EF4444';
+    if(scooter && !scooter.online)    color = '#94A3B8';
+    if(scooter?.brake)                color = '#EF4444';
+
+    const isMoving = !!scooter?.moving;
+    const heading  = (live?.valid && live.heading != null) ? live.heading : null;
+
+    // Directional arrow SVG (only when heading is known)
+    const arrow = heading !== null
+      ? `<svg style="position:absolute;inset:0;width:100%;height:100%;overflow:visible" viewBox="0 0 26 26">
+           <polygon points="13,3 10,13 13,11 16,13" fill="rgba(255,255,255,.95)"
+             transform="rotate(${heading},13,13)"/>
+         </svg>`
+      : '';
+
+    const pulseCls = isMoving ? 'marker-moving' : '';
+    const iconHtml = `<div class="${pulseCls}" style="
+      width:26px;height:26px;border-radius:50%;
+      background:${color};border:2.5px solid #fff;
+      box-shadow:0 2px 10px rgba(0,0,0,.45);
+      position:relative;display:flex;align-items:center;justify-content:center;
+    ">${arrow}</div>`;
+
+    // Rich popup
+    const bp   = scooter?.battery ?? 0;
+    const bpC  = bp > 50 ? 'c-green' : bp > 20 ? 'c-amber' : 'c-red';
+    const stC  = !scooter?.online ? '#94A3B8' : isMoving ? '#10B981' : '#60A5FA';
+    const stTx = !scooter?.online ? 'Offline'  : isMoving ? 'Moving'  : 'Stopped';
+
+    let gpsBlock = `<div class="gps-popup-sec">GPS</div>
+      <div class="gps-popup-row"><span class="gps-popup-lbl">Fix</span>
+        <span class="gps-popup-val ${live?.valid ? 'c-green' : 'c-red'}">${live?.valid ? 'Active' : 'No fix'}</span></div>`;
+
+    if(live?.valid) {
+      gpsBlock += `
+      <div class="gps-popup-row"><span class="gps-popup-lbl">Coordinates</span>
+        <span class="gps-popup-val c-blue">${parseFloat(live.lat).toFixed(5)},&thinsp;${parseFloat(live.lng).toFixed(5)}</span></div>
+      ${live.alt      != null ? `<div class="gps-popup-row"><span class="gps-popup-lbl">Altitude</span><span class="gps-popup-val">${parseFloat(live.alt).toFixed(1)} m</span></div>` : ''}
+      ${live.speed_kph!= null ? `<div class="gps-popup-row"><span class="gps-popup-lbl">GPS speed</span><span class="gps-popup-val">${parseFloat(live.speed_kph).toFixed(1)} km/h</span></div>` : ''}
+      ${live.heading  != null ? `<div class="gps-popup-row"><span class="gps-popup-lbl">Heading</span><span class="gps-popup-val">${parseFloat(live.heading).toFixed(0)}° ${compassDir(live.heading)}</span></div>` : ''}
+      ${live.satellites!=null ? `<div class="gps-popup-row"><span class="gps-popup-lbl">Satellites</span>
+        <span class="gps-popup-val ${live.satellites>=6?'c-green':live.satellites>=4?'c-amber':'c-red'}">${live.satellites}</span></div>` : ''}
+      ${live.hdop     != null ? (()=>{const h=parseFloat(live.hdop);const hc=h<=1.5?'c-green':h<=3?'c-blue':'c-amber';const hl=h<=1.5?'Excellent':h<=3?'Good':'Poor';return `<div class="gps-popup-row"><span class="gps-popup-lbl">Accuracy (HDOP)</span><span class="gps-popup-val ${hc}">${h.toFixed(1)} — ${hl}</span></div>`;})() : ''}
+      ${live.utc ? `<div class="gps-popup-row"><span class="gps-popup-lbl">UTC time</span>
+        <span class="gps-popup-val" style="font-size:10px">${live.utc.replace('T',' ').replace('Z','')}</span></div>` : ''}`;
+    }
+
+    const popupHtml = `<div class="gps-popup">
+      <div class="gps-popup-hd">
+        <span class="gps-popup-hd-id">${id}</span>
+        <span class="gps-popup-hd-badge" style="background:${stC}22;color:${stC}">${stTx}</span>
+      </div>
+      ${gpsBlock}
+      <div class="gps-popup-sec">Telemetry</div>
+      <div class="gps-popup-row"><span class="gps-popup-lbl">Battery</span><span class="gps-popup-val ${bpC}">${bp.toFixed(0)}%</span></div>
+      <div class="gps-popup-row"><span class="gps-popup-lbl">Motor speed</span><span class="gps-popup-val">${(scooter?.speed??0).toFixed(1)} mph</span></div>
+      <div class="gps-popup-row"><span class="gps-popup-lbl">Mode</span><span class="gps-popup-val c-blue">${scooter?.mode??'—'}</span></div>
+      <div class="gps-popup-row"><span class="gps-popup-lbl">Brake</span><span class="gps-popup-val ${scooter?.brake?'c-red':'c-green'}">${scooter?.brake?'LOCKED':'OPEN'}</span></div>
+      <div class="gps-popup-footer" style="font-size:10px;color:#475569">Last seen ${timeSince(scooter?.lastSeen??Date.now())}</div>
+    </div>`;
+
+    const icon = L.divIcon({ className:'', html:iconHtml, iconSize:[26,26], iconAnchor:[13,13], popupAnchor:[0,-18] });
+
+    if(scooterMarkers[id]) {
+      scooterMarkers[id].setLatLng([pos.lat, pos.lng]);
+      scooterMarkers[id].setIcon(icon);
+      scooterMarkers[id].setPopupContent(popupHtml);
+    } else {
+      scooterMarkers[id] = L.marker([pos.lat, pos.lng], {icon})
+        .bindPopup(popupHtml, {maxWidth:300, className:'dark-popup'})
+        .addTo(map);
+    }
   });
 }
 
@@ -2338,7 +2564,8 @@ function getDistance(lat1, lng1, lat2, lng2) {
 
 function updateGeofenceRadius(value) {
   globalGeofence.radius = parseInt(value);
-  document.getElementById('radius-value').textContent = value + 'm';
+  document.getElementById('radius-value').textContent = value + ' m';
+  updateGeofenceCenterDisplay();
   renderMap();
 }
 
@@ -2367,12 +2594,124 @@ function simulateQRUnlock() {
   addAlert('info', `QR unlock: ${scooterId} assigned to ${riderId}`);
 }
 
+// ── Geofence pick-mode ──
+function toggleGeofencePickMode() {
+  geofencePickMode = !geofencePickMode;
+  const btn  = document.getElementById('geofence-pick-btn');
+  const hint = document.getElementById('geofence-pick-hint');
+  if(geofencePickMode) {
+    btn.className = 'btn btn-amber';
+    btn.innerHTML = '<i class="ti ti-x"></i> Cancel';
+    hint.style.display = 'flex';
+    if(map) map.getContainer().style.cursor = 'crosshair';
+  } else {
+    btn.className = 'btn btn-ghost';
+    btn.innerHTML = '<i class="ti ti-map-pin"></i> Set reference point';
+    hint.style.display = 'none';
+    if(map) map.getContainer().style.cursor = '';
+  }
+}
+
+function setGeofenceCenter(lat, lng) {
+  globalGeofence.centerLat = lat;
+  globalGeofence.centerLng = lng;
+  if(geofencePickMode) toggleGeofencePickMode();
+  updateGeofenceCenterDisplay();
+  renderMap();
+  addAlert('info', `Geofence center set — ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+  addAuditLog('geofence_center', `Reference point set to ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+}
+
+function updateGeofenceCenterDisplay() {
+  const el   = document.getElementById('geofence-center-coords');
+  const note = document.getElementById('geofence-status-note');
+  const lat  = globalGeofence.centerLat;
+  const lng  = globalGeofence.centerLng;
+  const isSet = !(lat === 40.7128 && lng === -74.0060) && lat != null;  // not the default placeholder
+
+  if(el) {
+    if(isSet) {
+      el.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      el.style.color = 'var(--text-primary)';
+    } else {
+      el.textContent = 'Not set — click "Set reference point"';
+      el.style.color = 'var(--text-tertiary)';
+    }
+  }
+  if(note && isSet) {
+    note.innerHTML = `Scooters must stay within <strong style="color:var(--accent)">${globalGeofence.radius} m</strong> of this point. Enforcement is ${globalGeofence.enabled ? '<span style="color:var(--green)">ON</span>' : '<span style="color:var(--text-tertiary)">OFF</span>'}.`;
+  }
+}
+
+function renderGpsStatusTable() {
+  const el = document.getElementById('gps-status-table');
+  if(!el) return;
+
+  const ids = Object.keys(fleetData);
+  if(!ids.length) { el.innerHTML = '<div class="alerts-empty">No scooters connected</div>'; return; }
+
+  const ts = document.getElementById('gps-table-ts');
+  if(ts) ts.textContent = 'Updated ' + new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+
+  const compassDir = deg => ['N','NE','E','SE','S','SW','W','NW'][Math.round(deg/45)%8];
+
+  const rows = ids.map(id => {
+    const g  = fleetData[id]?.gps;
+    const lv = scooterGPS[id];
+    const valid = g?.valid;
+    const lat = valid ? parseFloat(g.lat)       : (lv?.lat ?? null);
+    const lng = valid ? parseFloat(g.lng)       : (lv?.lng ?? null);
+    const alt = valid ? g.alt                   : null;
+    const gspd= valid ? g.speed_kph             : null;
+    const hdg = valid ? g.heading               : null;
+    const sat = valid ? g.satellites            : null;
+    const hdop= valid ? parseFloat(g.hdop)      : null;
+    const utc = valid ? g.utc                   : null;
+
+    const hdopCls  = hdop == null ? '' : hdop <= 1.5 ? 'gtv-good' : hdop <= 3 ? 'gtv-ok' : 'gtv-bad';
+    const hdopLbl  = hdop == null ? '—' : (hdop <= 1.5 ? 'Excellent' : hdop <= 3 ? 'Good' : 'Poor');
+    const satCls   = sat  == null ? '' : sat >= 6 ? 'gtv-good' : sat >= 4 ? 'gtv-ok' : 'gtv-bad';
+    const fixBadge = valid
+      ? `<span class="gps-fix-badge on"><i class="ti ti-satellite" style="font-size:9px"></i>&nbsp;Fix</span>`
+      : `<span class="gps-fix-badge off"><i class="ti ti-satellite-off" style="font-size:9px"></i>&nbsp;No fix</span>`;
+
+    const coordCell = (lat != null)
+      ? `<span style="color:var(--text-primary)">${lat.toFixed(5)}</span><br>
+         <span class="gtv-dim">${lng.toFixed(5)}</span>`
+      : `<span class="gtv-dim">—</span>`;
+
+    const utcShort = utc ? utc.replace('T',' ').replace('Z','') : '—';
+
+    return `<tr>
+      <td style="color:var(--text-primary);font-weight:600">${id}</td>
+      <td>${fixBadge}</td>
+      <td>${coordCell}</td>
+      <td class="${alt!=null?'':'gtv-dim'}">${alt!=null ? parseFloat(alt).toFixed(1)+' m' : '—'}</td>
+      <td class="${gspd!=null?'':'gtv-dim'}">${gspd!=null ? parseFloat(gspd).toFixed(1)+' km/h' : '—'}</td>
+      <td class="${hdg!=null?'':'gtv-dim'}">${hdg!=null ? parseFloat(hdg).toFixed(0)+'° '+compassDir(hdg) : '—'}</td>
+      <td class="${satCls}">${sat!=null ? sat : '—'}</td>
+      <td class="${hdopCls}">${hdop!=null ? hdop.toFixed(1)+' — '+hdopLbl : '—'}</td>
+      <td class="gtv-dim" style="font-size:11px">${utcShort}</td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = `<table class="gps-tbl">
+    <thead><tr>
+      <th>ID</th><th>Fix</th><th>Coordinates</th><th>Altitude</th>
+      <th>GPS Speed</th><th>Heading</th><th>Sats</th><th>Accuracy</th><th>UTC Time</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
 function renderMapPage() {
   initMap();
-  // Update geofence UI values
   document.getElementById('geofence-enabled').checked = globalGeofence.enabled;
-  document.getElementById('geofence-radius').value = globalGeofence.radius;
-  document.getElementById('radius-value').textContent = globalGeofence.radius + 'm';
+  document.getElementById('geofence-radius').value    = globalGeofence.radius;
+  document.getElementById('radius-value').textContent = globalGeofence.radius + ' m';
+  updateGeofenceCenterDisplay();
+  renderMap();
+  renderGpsStatusTable();
 }
 
 // ── Trip Route Replay ──

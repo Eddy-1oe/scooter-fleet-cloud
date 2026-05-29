@@ -1,7 +1,12 @@
+#include "soc/soc.h"
+#include "soc/rtc_cntl_reg.h"
 #include <HardwareSerial.h>
+#include <SoftwareSerial.h>
+#include <TinyGPSPlus.h>
 #include <WiFi.h>
 #include <WiFiManager.h>
 #include <HTTPClient.h>
+#include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
 #include <Preferences.h>
 
@@ -14,6 +19,12 @@
 #define OPTO_PIN        26
 #define RESET_PIN       0     // GPIO0 — reset button to GND
 
+// GPS (NEO-7M) via SoftwareSerial
+// GPS TX → ESP32 D14 (our RX), GPS RX → ESP32 D13 (our TX)
+#define GPS_RX_PIN      14
+#define GPS_TX_PIN      13
+#define GPS_BAUD        9600
+
 // ==========================================
 // SCOOTER ID
 // Change this for each scooter (SCO-001, SCO-002, etc.)
@@ -23,17 +34,33 @@ const char* SCOOTER_ID = "SCO-001";
 // ==========================================
 // SERVER CONFIG
 // Saved to flash — changeable via WiFiManager portal
+// Set serverURL to full https:// domain for cloud, or leave blank to use serverIP:serverPort (local)
 // ==========================================
 Preferences prefs;
+String serverURL  = "";              // e.g. "https://my-app.up.railway.app"  (leave blank for local)
 String serverIP   = "10.104.13.197";
 int    serverPort = 3000;
 
 HardwareSerial ctrlSerial(1);
+SoftwareSerial  gpsSerial(GPS_RX_PIN, GPS_TX_PIN);
+TinyGPSPlus     gps;
 float smoothedSpeed = 0;
 
 // ==========================================
 // SCOOTER DATA STRUCTURE
 // ==========================================
+struct GpsData {
+  bool    valid;
+  double  latitude;
+  double  longitude;
+  float   altitudeM;
+  float   speedKph;
+  float   headingDeg;
+  uint8_t satellites;
+  float   hdop;
+  char    timestamp[21];  // "YYYY-MM-DDTHH:MM:SSZ\0"
+};
+
 struct ScooterData {
   float   battery;
   float   voltage;
@@ -44,29 +71,38 @@ struct ScooterData {
   bool    diagMode;
   String  mode;
   bool    valid;
+  GpsData gps;
 };
 
 ScooterData scooter;
 
 // ==========================================
-// LOAD SERVER IP FROM FLASH
+// LOAD SERVER CONFIG FROM FLASH
 // ==========================================
 void loadServerConfig() {
   prefs.begin("fleet", false);
-  serverIP   = prefs.getString("serverIP", "10.104.13.197");
-  serverPort = prefs.getInt("serverPort", 3000);
+  serverURL  = prefs.getString("serverURL",  "");
+  serverIP   = prefs.getString("serverIP",   "10.104.13.197");
+  serverPort = prefs.getInt("serverPort",    3000);
   prefs.end();
-  Serial.print("Server: http://");
-  Serial.print(serverIP);
-  Serial.print(":");
-  Serial.println(serverPort);
+  if (serverURL.length() > 0) {
+    Serial.print("Server (cloud): ");
+    Serial.println(serverURL);
+  } else {
+    Serial.print("Server (local): http://");
+    Serial.print(serverIP);
+    Serial.print(":");
+    Serial.println(serverPort);
+  }
 }
 
-void saveServerConfig(String ip, int port) {
+void saveServerConfig(String url, String ip, int port) {
   prefs.begin("fleet", false);
-  prefs.putString("serverIP", ip);
-  prefs.putInt("serverPort", port);
+  prefs.putString("serverURL",  url);
+  prefs.putString("serverIP",   ip);
+  prefs.putInt("serverPort",    port);
   prefs.end();
+  serverURL  = url;
   serverIP   = ip;
   serverPort = port;
   Serial.println("Server config saved");
@@ -199,6 +235,57 @@ void executeCommand(String action) {
 }
 
 // ==========================================
+// GPS READING
+// ==========================================
+void readGPS() {
+  while (gpsSerial.available())
+    gps.encode(gpsSerial.read());
+
+  if (gps.location.isValid()) {
+    scooter.gps.valid     = true;
+    scooter.gps.latitude  = gps.location.lat();
+    scooter.gps.longitude = gps.location.lng();
+  }
+  if (gps.altitude.isValid())
+    scooter.gps.altitudeM  = gps.altitude.meters();
+  if (gps.speed.isValid())
+    scooter.gps.speedKph   = gps.speed.kmph();
+  if (gps.course.isValid())
+    scooter.gps.headingDeg = gps.course.deg();
+  if (gps.satellites.isValid())
+    scooter.gps.satellites = gps.satellites.value();
+  if (gps.hdop.isValid())
+    scooter.gps.hdop       = gps.hdop.hdop();
+  if (gps.date.isValid() && gps.time.isValid()) {
+    snprintf(scooter.gps.timestamp, sizeof(scooter.gps.timestamp),
+             "%04u-%02u-%02uT%02u:%02u:%02uZ",
+             gps.date.year(), gps.date.month(),  gps.date.day(),
+             gps.time.hour(), gps.time.minute(), gps.time.second());
+  }
+}
+
+// ==========================================
+// URL BUILDER + HTTP HELPER
+// ==========================================
+String buildURL(String path) {
+  if (serverURL.length() > 0)
+    return serverURL + path;
+  return "http://" + serverIP + ":" + String(serverPort) + path;
+}
+
+bool isCloud() { return serverURL.startsWith("https://"); }
+
+// Begin an HTTPClient against the right scheme
+void httpBegin(HTTPClient& http, WiFiClientSecure& secure, String url) {
+  if (isCloud()) {
+    secure.setInsecure();  // skip cert validation — Railway uses valid certs but avoids storing them in flash
+    http.begin(secure, url);
+  } else {
+    http.begin(url);
+  }
+}
+
+// ==========================================
 // PUSH TELEMETRY TO SERVER
 // ==========================================
 unsigned long lastPush = 0;
@@ -208,12 +295,12 @@ void pushTelemetry() {
   if (millis() - lastPush < 1000) return;
   lastPush = millis();
 
+  WiFiClientSecure secure;
   HTTPClient http;
-  String url = "http://" + serverIP + ":" + String(serverPort) + "/telemetry";
-  http.begin(url);
+  httpBegin(http, secure, buildURL("/telemetry"));
   http.addHeader("Content-Type", "application/json");
 
-  StaticJsonDocument<256> doc;
+  StaticJsonDocument<512> doc;
   doc["id"]      = SCOOTER_ID;
   doc["battery"] = scooter.battery;
   doc["voltage"] = scooter.voltage;
@@ -223,6 +310,20 @@ void pushTelemetry() {
   doc["brake"]   = scooter.brakeActive;
   doc["light"]   = scooter.lightOn;
   doc["diag"]    = scooter.diagMode;
+
+  JsonObject g = doc.createNestedObject("gps");
+  g["valid"] = scooter.gps.valid;
+  if (scooter.gps.valid) {
+    g["lat"]        = serialized(String(scooter.gps.latitude,  6));
+    g["lng"]        = serialized(String(scooter.gps.longitude, 6));
+    g["alt"]        = scooter.gps.altitudeM;
+    g["speed_kph"]  = scooter.gps.speedKph;
+    g["heading"]    = scooter.gps.headingDeg;
+    g["satellites"] = scooter.gps.satellites;
+    g["hdop"]       = scooter.gps.hdop;
+    if (scooter.gps.timestamp[0] != '\0')
+      g["utc"] = scooter.gps.timestamp;
+  }
 
   String body;
   serializeJson(doc, body);
@@ -246,9 +347,9 @@ void pollCommands() {
   if (millis() - lastPoll < 1000) return;
   lastPoll = millis();
 
+  WiFiClientSecure secure;
   HTTPClient http;
-  String url = "http://" + serverIP + ":" + String(serverPort) + "/commands/" + String(SCOOTER_ID);
-  http.begin(url);
+  httpBegin(http, secure, buildURL("/commands/" + String(SCOOTER_ID)));
 
   int code = http.GET();
   if (code == 200) {
@@ -289,6 +390,7 @@ unsigned long lastByte = 0;
 // SETUP
 // ==========================================
 void setup() {
+  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);  // GPS current spike triggers brownout on weak USB
   Serial.begin(115200);
   delay(1500);
 
@@ -306,9 +408,11 @@ void setup() {
   WiFiManager wm;
   wm.setConfigPortalTimeout(180); // hotspot times out after 3 minutes
 
-  // Custom fields for server IP and Port on setup page
-  WiFiManagerParameter serverIPParam("serverip", "Fleet Server IP", serverIP.c_str(), 40);
-  WiFiManagerParameter serverPortParam("serverport", "Fleet Server Port", String(serverPort).c_str(), 6);
+  // Custom fields on setup page — cloud URL takes priority over IP:port
+  WiFiManagerParameter serverURLParam("serverurl", "Cloud URL (e.g. https://xxx.up.railway.app)", serverURL.c_str(), 80);
+  WiFiManagerParameter serverIPParam("serverip", "Local Server IP (ignored if Cloud URL set)", serverIP.c_str(), 40);
+  WiFiManagerParameter serverPortParam("serverport", "Local Server Port", String(serverPort).c_str(), 6);
+  wm.addParameter(&serverURLParam);
   wm.addParameter(&serverIPParam);
   wm.addParameter(&serverPortParam);
 
@@ -326,10 +430,12 @@ void setup() {
   }
 
   // Save server config if changed on setup page
-  String newIP = String(serverIPParam.getValue());
-  int newPort  = String(serverPortParam.getValue()).toInt();
-  if (newIP != serverIP || (newPort > 0 && newPort != serverPort)) {
-    saveServerConfig(newIP, newPort > 0 ? newPort : 3000);
+  String newURL  = String(serverURLParam.getValue());
+  String newIP   = String(serverIPParam.getValue());
+  int    newPort = String(serverPortParam.getValue()).toInt();
+  newURL.trim();
+  if (newURL != serverURL || newIP != serverIP || (newPort > 0 && newPort != serverPort)) {
+    saveServerConfig(newURL, newIP, newPort > 0 ? newPort : 3000);
   }
 
   Serial.println();
@@ -337,6 +443,11 @@ void setup() {
   Serial.println(WiFi.localIP());
 
   ctrlSerial.begin(CONTROLLER_BAUD, SERIAL_8N1, RX_PIN, -1);
+
+  gpsSerial.begin(GPS_BAUD);
+  memset(&scooter.gps, 0, sizeof(scooter.gps));
+  Serial.println("GPS serial started on D14/D13");
+
   Serial.print("=== Scooter ");
   Serial.print(SCOOTER_ID);
   Serial.println(" ready ===");
@@ -373,6 +484,7 @@ void loop() {
     smoothedSpeed = 0;
   }
 
+  readGPS();
   pushTelemetry();
   pollCommands();
   maintainWifi();

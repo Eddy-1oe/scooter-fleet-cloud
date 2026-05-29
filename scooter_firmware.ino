@@ -17,7 +17,7 @@
 const char* ssid       = "4G-CPE-88BD";
 const char* password   = "12345678";
 const char* serverIP   = "scooter-fleet-cloud-production.up.railway.app"; // Railway deployment URL
-const int   serverPort = 443;
+const int   serverPort = 80;
 const char* SCOOTER_ID = "SCO-001";
 
 HardwareSerial ctrlSerial(1);
@@ -150,7 +150,7 @@ void pushTelemetry() {
   lastPush = millis();
 
   HTTPClient http;
-  String url = "https://" + String(serverIP) + "/telemetry";
+  String url = "http://" + String(serverIP) + "/telemetry";
   http.begin(url);
   http.addHeader("Content-Type", "application/json");
 
@@ -188,7 +188,7 @@ void pollCommands() {
   lastPoll = millis();
 
   HTTPClient http;
-  String url = "https://" + String(serverIP) + "/commands/" + SCOOTER_ID;
+  String url = "http://" + String(serverIP) + "/commands/" + SCOOTER_ID;
   http.begin(url);
 
   int code = http.GET();

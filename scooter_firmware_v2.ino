@@ -34,10 +34,10 @@ const char* SCOOTER_ID = "SCO-001";
 // ==========================================
 // SERVER CONFIG
 // Saved to flash — changeable via WiFiManager portal
-// Set serverURL to full https:// domain for cloud, or leave blank to use serverIP:serverPort (local)
+// Set serverURL to full http:// domain for cloud, or leave blank to use serverIP:serverPort (local)
 // ==========================================
 Preferences prefs;
-String serverURL  = "";              // e.g. "https://my-app.up.railway.app"  (leave blank for local)
+String serverURL  = "http://scooter-fleet-cloud-production.up.railway.app";  // Railway deployment URL
 String serverIP   = "10.104.13.197";
 int    serverPort = 3000;
 

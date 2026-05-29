@@ -1,6 +1,7 @@
 #include <HardwareSerial.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
+#include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
 
 // ==========================================
@@ -17,7 +18,7 @@
 const char* ssid       = "4G-CPE-88BD";
 const char* password   = "12345678";
 const char* serverIP   = "scooter-fleet-cloud-production.up.railway.app"; // Railway deployment URL
-const int   serverPort = 80;
+const int   serverPort = 443;
 const char* SCOOTER_ID = "SCO-001";
 
 HardwareSerial ctrlSerial(1);
@@ -149,9 +150,11 @@ void pushTelemetry() {
   if (millis() - lastPush < 1000) return;
   lastPush = millis();
 
+  WiFiClientSecure secure;
+  secure.setInsecure();  // Skip certificate validation for Railway
   HTTPClient http;
-  String url = "http://" + String(serverIP) + "/telemetry";
-  http.begin(url);
+  String url = "https://" + String(serverIP) + "/telemetry";
+  http.begin(secure, url);
   http.addHeader("Content-Type", "application/json");
 
   StaticJsonDocument<256> doc;
@@ -187,9 +190,11 @@ void pollCommands() {
   if (millis() - lastPoll < 1000) return;
   lastPoll = millis();
 
+  WiFiClientSecure secure;
+  secure.setInsecure();  // Skip certificate validation for Railway
   HTTPClient http;
-  String url = "http://" + String(serverIP) + "/commands/" + SCOOTER_ID;
-  http.begin(url);
+  String url = "https://" + String(serverIP) + "/commands/" + SCOOTER_ID;
+  http.begin(secure, url);
 
   int code = http.GET();
   if (code == 200) {

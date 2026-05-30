@@ -427,13 +427,20 @@ void httpBegin(HTTPClient& http, WiFiClientSecure& secure, String url) {
 unsigned long lastPush = 0;
 
 void pushTelemetry() {
-  if (WiFi.status() != WL_CONNECTED) return;
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("[PUSH] WiFi not connected");
+    return;
+  }
   if (millis() - lastPush < 1000) return;
   lastPush = millis();
 
+  String url = buildURL("/telemetry");
+  Serial.print("[PUSH] URL: ");
+  Serial.println(url);
+
   WiFiClientSecure secure;
   HTTPClient http;
-  httpBegin(http, secure, buildURL("/telemetry"));
+  httpBegin(http, secure, url);
   http.addHeader("Content-Type", "application/json");
 
   StaticJsonDocument<256> doc;
@@ -450,12 +457,17 @@ void pushTelemetry() {
   String body;
   serializeJson(doc, body);
 
+  Serial.print("[PUSH] Body: ");
+  Serial.println(body);
+
   int code = http.POST(body);
   http.end();
 
   if (code != 200) {
-    Serial.print("Push failed: ");
+    Serial.print("[PUSH] Failed: ");
     Serial.println(code);
+  } else {
+    Serial.println("[PUSH] Success");
   }
 }
 

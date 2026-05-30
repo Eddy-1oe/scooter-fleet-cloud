@@ -1,5 +1,5 @@
-#include "soc/soc.h"
-#include "soc/rtc_cntl_reg.h"
+// #include "soc/soc.h"
+// #include "soc/rtc_cntl_reg.h"
 #include <HardwareSerial.h>
 // #include <SoftwareSerial.h>
 // #include <TinyGPS++.h>
@@ -403,7 +403,7 @@ unsigned long lastByte = 0;
 // SETUP
 // ==========================================
 void setup() {
-  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);  // GPS current spike triggers brownout on weak USB
+  // WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);  // GPS current spike triggers brownout on weak USB - COMMENTED OUT for ESP32-C6 compatibility
   Serial.begin(115200);
   delay(1500);
 

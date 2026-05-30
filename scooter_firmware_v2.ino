@@ -406,18 +406,23 @@ void setup() {
   // WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);  // GPS current spike triggers brownout on weak USB - COMMENTED OUT for ESP32-C6 compatibility
   Serial.begin(115200);
   delay(1500);
+  Serial.println("=== Setup started ===");
 
   pinMode(OPTO_PIN, OUTPUT);
   digitalWrite(OPTO_PIN, LOW);
   pinMode(SW_PIN, INPUT);
+  Serial.println("=== Pins configured ===");
 
   // Check if reset button held
   checkResetButton();
+  Serial.println("=== Reset button checked ===");
 
   // Load server IP from flash
   loadServerConfig();
+  Serial.println("=== Server config loaded ===");
 
   // WiFiManager — auto connects or starts hotspot
+  Serial.println("=== Creating WiFiManager ===");
   WiFiManager wm;
   wm.setConfigPortalTimeout(180); // hotspot times out after 3 minutes
 
@@ -428,13 +433,16 @@ void setup() {
   wm.addParameter(&serverURLParam);
   wm.addParameter(&serverIPParam);
   wm.addParameter(&serverPortParam);
+  Serial.println("=== WiFiManager parameters added ===");
 
   // Hotspot name includes scooter ID
   String apName = "Scooter-" + String(SCOOTER_ID);
 
   Serial.print("Connecting to WiFi via WiFiManager...");
   // Using a password for the setup portal
+  Serial.println("=== Starting WiFiManager autoConnect ===");
   bool connected = wm.autoConnect(apName.c_str(), "scooter123");
+  Serial.println("=== WiFiManager autoConnect returned ===");
 
   if (!connected) {
     Serial.println("Failed to connect. Restarting...");

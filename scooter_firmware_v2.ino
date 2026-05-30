@@ -1,8 +1,25 @@
-// #include "soc/soc.h"
-// #include "soc/rtc_cntl_reg.h"
+// ============================================================
+//  ScooterFleet — XIAO ESP32-C6 Hardware Pin Test v7
+//
+//  Pin mapping (XIAO ESP32-C6):
+//  GPIO0  (RESET) -> D0  INPUT_PULLUP
+//  GPIO16 (RX)    -> D3  UART1 RX from scooter display
+//  GPIO26 (BRAKE) -> D6  Optocoupler (HIGH=ON, LOW=OFF)
+//  GPIO15 (SW)    -> D5  BC337 NPN   (HIGH=ON, LOW=OFF)
+//
+//  Commands:
+//  brake_on     - engage brake
+//  brake_off    - release brake
+//  mode         - single press 100ms
+//  headlight    - toggle head light (double press, gap 50ms)
+//  sidelight    - toggle side lights (brake hold + double SW press)
+//  walk         - walk mode
+//  power        - power hold 3s
+//  status       - pin states
+//  help         - command list
+// ============================================================
+
 #include <HardwareSerial.h>
-// #include <SoftwareSerial.h>
-// #include <TinyGPS++.h>
 #include <WiFi.h>
 #include <WiFiManager.h>
 #include <HTTPClient.h>
@@ -11,19 +28,15 @@
 #include <Preferences.h>
 
 // ==========================================
-// PIN DEFINITIONS — ESP32 WROOM
+// PIN DEFINITIONS — XIAO ESP32-C6
 // ==========================================
-#define RX_PIN          16
-#define CONTROLLER_BAUD 9600
-#define SW_PIN          15
-#define OPTO_PIN        26
-#define RESET_PIN       0     // GPIO0 — reset button to GND
+#define RESET_PIN  D0
+#define RX_PIN     D3
+#define BRAKE_PIN  D6
+#define SW_PIN     D5
 
-// GPS (NEO-7M) via SoftwareSerial - COMMENTED OUT
-// GPS TX → ESP32 D14 (our RX), GPS RX → ESP32 D13 (our TX)
-// #define GPS_RX_PIN      14
-// #define GPS_TX_PIN      13
-// #define GPS_BAUD        9600
+#define BRAKE_ON   HIGH
+#define BRAKE_OFF  LOW
 
 // ==========================================
 // SCOOTER ID
@@ -41,28 +54,12 @@ String serverURL  = "https://scooter-fleet-cloud-production.up.railway.app";  //
 String serverIP   = "10.104.13.197";
 int    serverPort = 3000;
 
-HardwareSerial ctrlSerial(1);
-// SoftwareSerial  gpsSerial(GPS_RX_PIN, GPS_TX_PIN);
-// TinyGPSPlus     gps;
+HardwareSerial ScooterSerial(1);
 float smoothedSpeed = 0;
 
 // ==========================================
 // SCOOTER DATA STRUCTURE
 // ==========================================
-/*
-struct GpsData {
-  bool    valid;
-  double  latitude;
-  double  longitude;
-  float   altitudeM;
-  float   speedKph;
-  float   headingDeg;
-  uint8_t satellites;
-  float   hdop;
-  char    timestamp[21];  // "YYYY-MM-DDTHH:MM:SSZ\0"
-};
-*/
-
 struct ScooterData {
   float   battery;
   float   voltage;
@@ -73,10 +70,16 @@ struct ScooterData {
   bool    diagMode;
   String  mode;
   bool    valid;
-  // GpsData gps;
 };
 
 ScooterData scooter;
+
+// ==========================================
+// PACKET BUFFER
+// ==========================================
+static uint8_t pkt[14];
+static uint8_t pktIdx   = 0;
+static bool    inPacket = false;
 
 // ==========================================
 // LOAD SERVER CONFIG FROM FLASH
@@ -111,168 +114,291 @@ void saveServerConfig(String url, String ip, int port) {
 }
 
 // ==========================================
-// CHECK RESET BUTTON
-// Hold GPIO0 LOW for 3 seconds on boot to clear WiFi credentials
+// safeDelay
 // ==========================================
-void checkResetButton() {
-  pinMode(RESET_PIN, INPUT_PULLUP);
-  Serial.println("Hold reset button to clear WiFi credentials...");
-  delay(100);
+void safeDelay(unsigned long ms) {
+  unsigned long start = millis();
+  while (millis() - start < ms) {
+    vTaskDelay(1);
+  }
+}
 
-  int held = 0;
-  while (digitalRead(RESET_PIN) == LOW) {
-    delay(100);
-    held += 100;
-    Serial.print(".");
-    if (held >= 3000) {
-      Serial.println();
-      Serial.println("Clearing WiFi credentials...");
-      WiFiManager wm;
-      wm.resetSettings();
-      Serial.println("Cleared. Restarting...");
-      delay(500);
-      ESP.restart();
+// ==========================================
+// Brake
+// ==========================================
+void doBrakeOn() {
+  digitalWrite(BRAKE_PIN, BRAKE_ON);
+  Serial.println("  -> BRAKE ON  (D6=HIGH)");
+}
+
+void doBrakeOff() {
+  digitalWrite(BRAKE_PIN, BRAKE_OFF);
+  Serial.println("  -> BRAKE OFF (D6=LOW)");
+}
+
+// ==========================================
+// SW mode
+// ==========================================
+void doSwMode() {
+  Serial.println("  -> MODE: single press 100ms");
+  digitalWrite(SW_PIN, HIGH);
+  safeDelay(100);
+  digitalWrite(SW_PIN, LOW);
+  Serial.println("  -> done");
+}
+
+// ==========================================
+// Head light — double press, 50ms gap
+// ============================================
+void doHeadLight() {
+  Serial.println("  -> HEADLIGHT: double press gap=50ms");
+  digitalWrite(SW_PIN, HIGH);
+  safeDelay(100);
+  digitalWrite(SW_PIN, LOW);
+  safeDelay(50);
+  digitalWrite(SW_PIN, HIGH);
+  safeDelay(100);
+  digitalWrite(SW_PIN, LOW);
+  Serial.println("  -> done — check [PKT] Light field");
+}
+
+// ==========================================
+// Side lights — brake hold + double SW press
+// ==========================================
+void doSideLight() {
+  Serial.println("  -> SIDELIGHT: brake hold + double SW press");
+  digitalWrite(BRAKE_PIN, BRAKE_ON);
+  safeDelay(500);
+  digitalWrite(SW_PIN, HIGH);
+  safeDelay(100);
+  digitalWrite(SW_PIN, LOW);
+  safeDelay(200);                     // longer gap between presses
+  digitalWrite(SW_PIN, HIGH);
+  safeDelay(100);
+  digitalWrite(SW_PIN, LOW);
+  safeDelay(500);
+  digitalWrite(BRAKE_PIN, BRAKE_OFF);
+  Serial.println("  -> done");
+}
+
+void doAlarm() {
+  Serial.println("  -> ALARM: brake on, power off, power on");
+  digitalWrite(BRAKE_PIN, BRAKE_ON);
+  safeDelay(500);
+  digitalWrite(SW_PIN, HIGH);  // power off
+  safeDelay(3000);
+  digitalWrite(SW_PIN, LOW);
+  safeDelay(1000);
+  digitalWrite(SW_PIN, HIGH);  // power on
+  safeDelay(1000);
+  digitalWrite(SW_PIN, LOW);
+  safeDelay(500);
+  digitalWrite(BRAKE_PIN, BRAKE_OFF);
+  Serial.println("  -> done");
+}
+
+// ==========================================
+// Walk + Power
+// ==========================================
+void doSwWalk() {
+  Serial.println("  -> WALK: 500ms + 100ms");
+  digitalWrite(SW_PIN, HIGH);
+  safeDelay(500);
+  digitalWrite(SW_PIN, LOW);
+  safeDelay(100);
+  digitalWrite(SW_PIN, HIGH);
+  safeDelay(100);
+  digitalWrite(SW_PIN, LOW);
+  Serial.println("  -> done");
+}
+
+void doMetric() {
+  Serial.println("  -> METRIC: triple press");
+  digitalWrite(SW_PIN, HIGH); safeDelay(100);
+  digitalWrite(SW_PIN, LOW);  safeDelay(50);
+  digitalWrite(SW_PIN, HIGH); safeDelay(100);
+  digitalWrite(SW_PIN, LOW);  safeDelay(50);
+  digitalWrite(SW_PIN, HIGH); safeDelay(100);
+  digitalWrite(SW_PIN, LOW);
+  Serial.println("  -> done");
+}
+
+void doCruise() {
+  Serial.println("  -> CRUISE: quadruple press");
+  digitalWrite(SW_PIN, HIGH); safeDelay(100);
+  digitalWrite(SW_PIN, LOW);  safeDelay(50);
+  digitalWrite(SW_PIN, HIGH); safeDelay(100);
+  digitalWrite(SW_PIN, LOW);  safeDelay(50);
+  digitalWrite(SW_PIN, HIGH); safeDelay(100);
+  digitalWrite(SW_PIN, LOW);  safeDelay(50);
+  digitalWrite(SW_PIN, HIGH); safeDelay(100);
+  digitalWrite(SW_PIN, LOW);
+  Serial.println("  -> done");
+}
+
+void doAlarmOff() {
+  Serial.println("  -> ALARM OFF: brake off, power off, power on");
+  digitalWrite(BRAKE_PIN, BRAKE_OFF);
+  safeDelay(500);
+  digitalWrite(SW_PIN, HIGH);  // power off
+  safeDelay(3000);
+  digitalWrite(SW_PIN, LOW);
+  safeDelay(1000);
+  digitalWrite(SW_PIN, HIGH);  // power on
+  safeDelay(1000);
+  digitalWrite(SW_PIN, LOW);
+  Serial.println("  -> done");
+}
+
+void doZeroStart() {
+  Serial.println("  -> ZEROSTART: quintuple press");
+  digitalWrite(SW_PIN, HIGH); safeDelay(100);
+  digitalWrite(SW_PIN, LOW);  safeDelay(50);
+  digitalWrite(SW_PIN, HIGH); safeDelay(100);
+  digitalWrite(SW_PIN, LOW);  safeDelay(50);
+  digitalWrite(SW_PIN, HIGH); safeDelay(100);
+  digitalWrite(SW_PIN, LOW);  safeDelay(50);
+  digitalWrite(SW_PIN, HIGH); safeDelay(100);
+  digitalWrite(SW_PIN, LOW);  safeDelay(50);
+  digitalWrite(SW_PIN, HIGH); safeDelay(100);
+  digitalWrite(SW_PIN, LOW);
+  Serial.println("  -> done");
+}
+
+void doSwPower() {
+  Serial.println("  -> POWER: 3s hold");
+  Serial.println("     holding...");
+  digitalWrite(SW_PIN, HIGH);
+  safeDelay(3000);
+  digitalWrite(SW_PIN, LOW);
+  Serial.println("  -> done");
+}
+
+// ==========================================
+// Status + Help
+// ==========================================
+void printStatus() {
+  Serial.println("\n--- Pin Status ---");
+  Serial.print("  BRAKE D6: ");
+  Serial.println(digitalRead(BRAKE_PIN) == HIGH ? "HIGH (brake ON)" : "LOW  (brake OFF)");
+  Serial.print("  SW    D5: ");
+  Serial.println(digitalRead(SW_PIN) == HIGH ? "HIGH (active)" : "LOW  (idle)");
+  Serial.print("  RESET D0: ");
+  Serial.println(digitalRead(RESET_PIN) == LOW ? "LOW  (pressed)" : "HIGH (not pressed)");
+  Serial.println("-----------------");
+}
+
+void printHelp() {
+  Serial.println("\n--- Commands ---");
+  Serial.println("  brake_on   engage brake");
+  Serial.println("  brake_off  release brake");
+  Serial.println("  mode       single press 100ms");
+  Serial.println("  headlight  toggle head light");
+  Serial.println("  sidelight  toggle side lights");
+  Serial.println("  walk       walk mode");
+  Serial.println("  power      power hold 3s");
+  Serial.println("  metric     switch metric/imperial");
+  Serial.println("  cruise     toggle cruise control");
+  Serial.println("  alarm      brake on + power off + power on");
+  Serial.println("  alarmoff   alarm off");
+  Serial.println("  zerostart  toggle zero/non-zero start");
+  Serial.println("  status     pin states");
+  Serial.println("  help       this list");
+  Serial.println("----------------");
+}
+
+// ==========================================
+// Packet decoder
+// ==========================================
+void processUART() {
+  while (ScooterSerial.available()) {
+    uint8_t b = ScooterSerial.read();
+
+    if (b == 0xA5) {
+      inPacket = true;
+      pktIdx   = 0;
+    }
+
+    if (!inPacket) continue;
+
+    pkt[pktIdx++] = b;
+
+    if (pktIdx == 14) {
+      uint8_t sum = 0;
+      for (int i = 1; i <= 12; i++) sum += pkt[i];
+
+      if (sum == pkt[13] || pkt[13] == 0x01) {
+        float   voltage = (pkt[1] * 0.1f) + 20.0f;
+        int     rawSpd  = pkt[3];
+        bool    light   = (pkt[5] & 0x40) != 0;
+        bool    brake   = (pkt[6] == 0xFF);
+        uint8_t modeB   = pkt[8];
+        bool    diag    = (pkt[10] == 0x06);
+        int     bat     = constrain((int)((voltage - 32.0f) / 10.0f * 100.0f), 0, 100);
+
+        String mode = "UNKNOWN";
+        if      (diag)          mode = "DIAG";
+        else if (modeB == 0x00) mode = "ECO";
+        else if (modeB == 0x10) mode = "D";
+        else if (modeB == 0x20) mode = "S";
+
+        // Update scooter data structure
+        scooter.voltage     = voltage;
+        scooter.battery     = bat;
+        scooter.speedMph    = rawSpd;
+        scooter.isMoving    = (rawSpd > 0);
+        scooter.lightOn     = light;
+        scooter.brakeActive = brake;
+        scooter.mode        = mode;
+        scooter.diagMode    = diag;
+        scooter.valid       = true;
+
+        Serial.print("[PKT] V:");  Serial.print(voltage, 1);
+        Serial.print("V Bat:");    Serial.print(bat);
+        Serial.print("% Spd:");    Serial.print(rawSpd);
+        Serial.print(" Mode:");    Serial.print(mode);
+        Serial.print(" Brake:");   Serial.print(brake ? "ON " : "OFF");
+        Serial.print(" Light:");   Serial.print(light ? "ON " : "OFF");
+        Serial.print(" Diag:");    Serial.println(diag ? "ON" : "OFF");
+      } else {
+        Serial.print("[PKT] BAD CHECKSUM (got:0x");
+        Serial.print(pkt[13], HEX);
+        Serial.print(" exp:0x");
+        Serial.print(sum, HEX);
+        Serial.print(") raw: ");
+        for (int i = 0; i < 14; i++) {
+          if (pkt[i] < 0x10) Serial.print("0");
+          Serial.print(pkt[i], HEX);
+          Serial.print(" ");
+        }
+        Serial.println();
+      }
+
+      inPacket = false;
+      pktIdx   = 0;
     }
   }
-  Serial.println();
 }
 
 // ==========================================
-// SPEED CALCULATION
-// ==========================================
-float calculateSpeed(byte b3, byte modeByte, byte diagByte) {
-  float maxMph = 16.0;
-  if (diagByte == 0x06)      maxMph = 4.0;
-  else if (modeByte == 0x00) maxMph = 9.0;
-  else if (modeByte == 0x10) maxMph = 12.0;
-  else if (modeByte == 0x20) maxMph = 16.0;
-
-  float x = (float)b3 / 16.0;
-  float curve = pow(x, 0.55);
-  float mph = constrain(curve * maxMph, 0, maxMph);
-  mph = round(mph);
-  smoothedSpeed = (smoothedSpeed * 0.3) + (mph * 0.7);
-  return smoothedSpeed;
-}
-
-// ==========================================
-// PACKET PARSER
-// ==========================================
-float parseVoltage(byte raw) { return (raw * 0.1) + 20.0; }
-
-float parseBattery(byte raw) {
-  float v = parseVoltage(raw);
-  return constrain(((v - 32.0) / 10.0) * 100.0, 0, 100);
-}
-
-String parseMode(byte b8, byte b10) {
-  if (b10 == 0x06) return "DIAG";
-  switch (b8) {
-    case 0x00: return "ECO";
-    case 0x10: return "D";
-    case 0x20: return "S";
-    default:   return "UNKNOWN";
-  }
-}
-
-bool verifyChecksum(byte* pkt) {
-  byte sum = 0;
-  for (int i = 1; i <= 12; i++) sum += pkt[i];
-  return (sum == pkt[13]);
-}
-
-void parsePacket(byte* pkt) {
-  scooter.battery     = parseBattery(pkt[1]);
-  scooter.voltage     = parseVoltage(pkt[1]);
-  scooter.speedMph    = calculateSpeed(pkt[3], pkt[8], pkt[10]);
-  scooter.isMoving    = (pkt[3] > 0);
-  scooter.lightOn     = (pkt[5] & 0x40) != 0;
-  scooter.brakeActive = (pkt[6] == 0xFF);
-  scooter.mode        = parseMode(pkt[8], pkt[10]);
-  scooter.diagMode    = (pkt[10] == 0x06);
-  scooter.valid       = true;
-}
-
-// ==========================================
-// SW CONTROL
-// ==========================================
-void sw_pulse(int duration) {
-  pinMode(SW_PIN, OUTPUT);
-  digitalWrite(SW_PIN, HIGH);
-  delay(duration);
-  digitalWrite(SW_PIN, LOW);
-  pinMode(SW_PIN, INPUT);
-}
-
-void sw_powerToggle() {
-  pinMode(SW_PIN, OUTPUT);
-  digitalWrite(SW_PIN, HIGH);
-  delay(3000);
-  digitalWrite(SW_PIN, LOW);
-  pinMode(SW_PIN, INPUT);
-}
-
-void sw_cycleMode()   { sw_pulse(100); }
-void sw_toggleLight() { sw_pulse(100); delay(100); sw_pulse(100); }
-void sw_walkMode()    { sw_pulse(500); delay(100); sw_pulse(100); }
-
-// ==========================================
-// BRAKE CONTROL
-// ==========================================
-void brakeOn()  { digitalWrite(OPTO_PIN, HIGH); }
-void brakeOff() { digitalWrite(OPTO_PIN, LOW);  }
-
-// ==========================================
-// EXECUTE COMMAND
+// EXECUTE COMMAND (from server)
 // ==========================================
 void executeCommand(String action) {
   Serial.print("[CMD] ");
   Serial.println(action);
-  if      (action == "power")    sw_powerToggle();
-  else if (action == "mode")     sw_cycleMode();
-  else if (action == "light")    sw_toggleLight();
-  else if (action == "walk")     sw_walkMode();
-  else if (action == "brakeOn")  brakeOn();
-  else if (action == "brakeOff") brakeOff();
+  if      (action == "brake_on")  doBrakeOn();
+  else if (action == "brake_off") doBrakeOff();
+  else if (action == "mode")      doSwMode();
+  else if (action == "headlight") doHeadLight();
+  else if (action == "sidelight") doSideLight();
+  else if (action == "walk")      doSwWalk();
+  else if (action == "metric")    doMetric();
+  else if (action == "cruise")    doCruise();
+  else if (action == "alarm")     doAlarm();
+  else if (action == "alarmoff")  doAlarmOff();
+  else if (action == "zerostart") doZeroStart();
+  else if (action == "power")     doSwPower();
 }
-
-// ==========================================
-// GPS READING - COMMENTED OUT
-// ==========================================
-/*
-void readGPS() {
-  while (gpsSerial.available()) {
-    char c = gpsSerial.read();
-    gps.encode(c);
-  }
-
-  if (gps.location.isValid()) {
-    scooter.gps.valid     = true;
-    scooter.gps.latitude  = gps.location.lat();
-    scooter.gps.longitude = gps.location.lng();
-  }
-  if (gps.altitude.isValid())
-    scooter.gps.altitudeM  = gps.altitude.meters();
-  if (gps.speed.isValid())
-    scooter.gps.speedKph   = gps.speed.kmph();
-  if (gps.course.isValid())
-    scooter.gps.headingDeg = gps.course.deg();
-  if (gps.satellites.isValid())
-    scooter.gps.satellites = gps.satellites.value();
-  if (gps.hdop.isValid())
-    scooter.gps.hdop       = gps.hdop.hdop();
-  if (gps.date.isValid() && gps.time.isValid()) {
-    snprintf(scooter.gps.timestamp, sizeof(scooter.gps.timestamp),
-             "%04u-%02u-%02uT%02u:%02u:%02uZ",
-             gps.date.year(), gps.date.month(),  gps.date.day(),
-             gps.time.hour(), gps.time.minute(), gps.time.second());
-  }
-
-  if (millis() > 10000 && gps.charsProcessed() < 10) {
-    Serial.println("[GPS] No data — check wiring: TX->D14, RX->D13");
-  }
-}
-*/
 
 // ==========================================
 // URL BUILDER + HTTP HELPER
@@ -310,7 +436,7 @@ void pushTelemetry() {
   httpBegin(http, secure, buildURL("/telemetry"));
   http.addHeader("Content-Type", "application/json");
 
-  StaticJsonDocument<512> doc;
+  StaticJsonDocument<256> doc;
   doc["id"]      = SCOOTER_ID;
   doc["battery"] = scooter.battery;
   doc["voltage"] = scooter.voltage;
@@ -320,23 +446,6 @@ void pushTelemetry() {
   doc["brake"]   = scooter.brakeActive;
   doc["light"]   = scooter.lightOn;
   doc["diag"]    = scooter.diagMode;
-
-  // GPS data commented out
-  /*
-  JsonObject g = doc.createNestedObject("gps");
-  g["valid"] = scooter.gps.valid;
-  if (scooter.gps.valid) {
-    g["lat"]        = serialized(String(scooter.gps.latitude,  6));
-    g["lng"]        = serialized(String(scooter.gps.longitude, 6));
-    g["alt"]        = scooter.gps.altitudeM;
-    g["speed_kph"]  = scooter.gps.speedKph;
-    g["heading"]    = scooter.gps.headingDeg;
-    g["satellites"] = scooter.gps.satellites;
-    g["hdop"]       = scooter.gps.hdop;
-    if (scooter.gps.timestamp[0] != '\0')
-      g["utc"] = scooter.gps.timestamp;
-  }
-  */
 
   String body;
   serializeJson(doc, body);
@@ -403,26 +512,22 @@ unsigned long lastByte = 0;
 // SETUP
 // ==========================================
 void setup() {
-  // WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);  // GPS current spike triggers brownout on weak USB - COMMENTED OUT for ESP32-C6 compatibility
   Serial.begin(115200);
-  delay(1500);
-  Serial.println("=== Setup started ===");
+  safeDelay(1500);
 
-  pinMode(OPTO_PIN, OUTPUT);
-  digitalWrite(OPTO_PIN, LOW);
-  pinMode(SW_PIN, INPUT);
-  Serial.println("=== Pins configured ===");
+  pinMode(BRAKE_PIN, OUTPUT);
+  pinMode(SW_PIN,    OUTPUT);
+  pinMode(RESET_PIN, INPUT_PULLUP);
 
-  // Check if reset button held
-  checkResetButton();
-  Serial.println("=== Reset button checked ===");
+  digitalWrite(BRAKE_PIN, BRAKE_OFF);
+  digitalWrite(SW_PIN,    LOW);
+
+  ScooterSerial.begin(9600, SERIAL_8N1, RX_PIN, -1);
 
   // Load server IP from flash
   loadServerConfig();
-  Serial.println("=== Server config loaded ===");
 
   // WiFiManager — auto connects or starts hotspot
-  Serial.println("=== Creating WiFiManager ===");
   WiFiManager wm;
   wm.setConfigPortalTimeout(180); // hotspot times out after 3 minutes
 
@@ -433,16 +538,12 @@ void setup() {
   wm.addParameter(&serverURLParam);
   wm.addParameter(&serverIPParam);
   wm.addParameter(&serverPortParam);
-  Serial.println("=== WiFiManager parameters added ===");
 
   // Hotspot name includes scooter ID
   String apName = "Scooter-" + String(SCOOTER_ID);
 
   Serial.print("Connecting to WiFi via WiFiManager...");
-  // Using a password for the setup portal
-  Serial.println("=== Starting WiFiManager autoConnect ===");
   bool connected = wm.autoConnect(apName.c_str(), "scooter123");
-  Serial.println("=== WiFiManager autoConnect returned ===");
 
   if (!connected) {
     Serial.println("Failed to connect. Restarting...");
@@ -463,51 +564,80 @@ void setup() {
   Serial.print("WiFi connected. IP: ");
   Serial.println(WiFi.localIP());
 
-  ctrlSerial.begin(CONTROLLER_BAUD, SERIAL_8N1, RX_PIN, -1);
-
-  // GPS serial commented out
-  // gpsSerial.begin(GPS_BAUD);
-  // memset(&scooter.gps, 0, sizeof(scooter.gps));
-  // Serial.println("GPS serial started on D14/D13");
-
-  Serial.print("=== Scooter ");
-  Serial.print(SCOOTER_ID);
-  Serial.println(" ready ===");
+  Serial.println("\n========================================");
+  Serial.println("  ScooterFleet C6 v2 with WiFiManager");
+  Serial.println("========================================");
+  printHelp();
+  printStatus();
+  Serial.println("\nReady. Type a command and press Enter.\n");
 }
 
 // ==========================================
 // MAIN LOOP
 // ==========================================
 void loop() {
-  // Read display TX
-  while (ctrlSerial.available()) {
-    byte b = ctrlSerial.read();
-    lastByte = millis();
+  vTaskDelay(1);
 
-    if (b == 0xA5 && bufIndex == 0) {
-      packetBuf[0] = b;
-      bufIndex = 1;
-    }
-    else if (bufIndex > 0 && bufIndex < 14) {
-      packetBuf[bufIndex++] = b;
-      if (bufIndex == 14) {
-        if (verifyChecksum(packetBuf)) {
-          parsePacket(packetBuf);
-        } else {
-          Serial.println("Bad packet");
+  static String cmdBuffer = "";
+
+  while (Serial.available()) {
+    char c = Serial.read();
+    if (c == '\n' || c == '\r') {
+      cmdBuffer.trim();
+      if (cmdBuffer.length() > 0) {
+        Serial.print("\n> ");
+        Serial.println(cmdBuffer);
+
+        if      (cmdBuffer == "brake_on")  doBrakeOn();
+        else if (cmdBuffer == "brake_off") doBrakeOff();
+        else if (cmdBuffer == "mode")      doSwMode();
+        else if (cmdBuffer == "headlight") doHeadLight();
+        else if (cmdBuffer == "sidelight") doSideLight();
+        else if (cmdBuffer == "walk")      doSwWalk();
+        else if (cmdBuffer == "metric")    doMetric();
+        else if (cmdBuffer == "cruise")    doCruise();
+        else if (cmdBuffer == "alarm")     doAlarm();
+        else if (cmdBuffer == "alarmoff") doAlarmOff();
+        else if (cmdBuffer == "zerostart") doZeroStart();
+        else if (cmdBuffer == "power")     doSwPower();
+        else if (cmdBuffer == "status")    printStatus();
+        else if (cmdBuffer == "help")      printHelp();
+        else {
+          Serial.print("  Unknown: ");
+          Serial.println(cmdBuffer);
+          Serial.println("  Type 'help' for commands.");
         }
-        bufIndex = 0;
       }
+      cmdBuffer = "";
+    } else {
+      cmdBuffer += c;
     }
   }
 
-  if (bufIndex > 0 && millis() - lastByte > 500) {
-    bufIndex = 0;
-    smoothedSpeed = 0;
-  }
-
-  // readGPS();  // Commented out
+  processUART();
   pushTelemetry();
   pollCommands();
   maintainWifi();
+
+  static unsigned long resetStart = 0;
+  static bool resetArmed = false;
+
+  if (digitalRead(RESET_PIN) == LOW) {
+    if (!resetArmed) {
+      resetArmed = true;
+      resetStart = millis();
+      Serial.println("[RESET] D0 held — hold 3s to wipe WiFi...");
+    } else if (millis() - resetStart >= 3000) {
+      Serial.println("[RESET] 3s confirmed.");
+      WiFiManager wm;
+      wm.resetSettings();
+      Serial.println("WiFi credentials cleared. Restarting...");
+      resetArmed = false;
+      safeDelay(2000);
+      ESP.restart();
+    }
+  } else {
+    if (resetArmed) Serial.println("[RESET] released early — no action.");
+    resetArmed = false;
+  }
 }

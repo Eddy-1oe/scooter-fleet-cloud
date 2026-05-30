@@ -1,8 +1,8 @@
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
 #include <HardwareSerial.h>
-#include <SoftwareSerial.h>
-#include <TinyGPS++.h>
+// #include <SoftwareSerial.h>
+// #include <TinyGPS++.h>
 #include <WiFi.h>
 #include <WiFiManager.h>
 #include <HTTPClient.h>
@@ -19,11 +19,11 @@
 #define OPTO_PIN        26
 #define RESET_PIN       0     // GPIO0 — reset button to GND
 
-// GPS (NEO-7M) via SoftwareSerial
+// GPS (NEO-7M) via SoftwareSerial - COMMENTED OUT
 // GPS TX → ESP32 D14 (our RX), GPS RX → ESP32 D13 (our TX)
-#define GPS_RX_PIN      14
-#define GPS_TX_PIN      13
-#define GPS_BAUD        9600
+// #define GPS_RX_PIN      14
+// #define GPS_TX_PIN      13
+// #define GPS_BAUD        9600
 
 // ==========================================
 // SCOOTER ID
@@ -42,13 +42,14 @@ String serverIP   = "10.104.13.197";
 int    serverPort = 3000;
 
 HardwareSerial ctrlSerial(1);
-SoftwareSerial  gpsSerial(GPS_RX_PIN, GPS_TX_PIN);
-TinyGPSPlus     gps;
+// SoftwareSerial  gpsSerial(GPS_RX_PIN, GPS_TX_PIN);
+// TinyGPSPlus     gps;
 float smoothedSpeed = 0;
 
 // ==========================================
 // SCOOTER DATA STRUCTURE
 // ==========================================
+/*
 struct GpsData {
   bool    valid;
   double  latitude;
@@ -60,6 +61,7 @@ struct GpsData {
   float   hdop;
   char    timestamp[21];  // "YYYY-MM-DDTHH:MM:SSZ\0"
 };
+*/
 
 struct ScooterData {
   float   battery;
@@ -71,7 +73,7 @@ struct ScooterData {
   bool    diagMode;
   String  mode;
   bool    valid;
-  GpsData gps;
+  // GpsData gps;
 };
 
 ScooterData scooter;
@@ -235,8 +237,9 @@ void executeCommand(String action) {
 }
 
 // ==========================================
-// GPS READING
+// GPS READING - COMMENTED OUT
 // ==========================================
+/*
 void readGPS() {
   while (gpsSerial.available()) {
     char c = gpsSerial.read();
@@ -269,6 +272,7 @@ void readGPS() {
     Serial.println("[GPS] No data — check wiring: TX->D14, RX->D13");
   }
 }
+*/
 
 // ==========================================
 // URL BUILDER + HTTP HELPER
@@ -317,6 +321,8 @@ void pushTelemetry() {
   doc["light"]   = scooter.lightOn;
   doc["diag"]    = scooter.diagMode;
 
+  // GPS data commented out
+  /*
   JsonObject g = doc.createNestedObject("gps");
   g["valid"] = scooter.gps.valid;
   if (scooter.gps.valid) {
@@ -330,6 +336,7 @@ void pushTelemetry() {
     if (scooter.gps.timestamp[0] != '\0')
       g["utc"] = scooter.gps.timestamp;
   }
+  */
 
   String body;
   serializeJson(doc, body);
@@ -450,9 +457,10 @@ void setup() {
 
   ctrlSerial.begin(CONTROLLER_BAUD, SERIAL_8N1, RX_PIN, -1);
 
-  gpsSerial.begin(GPS_BAUD);
-  memset(&scooter.gps, 0, sizeof(scooter.gps));
-  Serial.println("GPS serial started on D14/D13");
+  // GPS serial commented out
+  // gpsSerial.begin(GPS_BAUD);
+  // memset(&scooter.gps, 0, sizeof(scooter.gps));
+  // Serial.println("GPS serial started on D14/D13");
 
   Serial.print("=== Scooter ");
   Serial.print(SCOOTER_ID);
@@ -490,7 +498,7 @@ void loop() {
     smoothedSpeed = 0;
   }
 
-  readGPS();
+  // readGPS();  // Commented out
   pushTelemetry();
   pollCommands();
   maintainWifi();

@@ -2668,25 +2668,47 @@ async function renderActiveRidesPage() {
       return;
     }
 
+    // Fetch rider balances
+    const ridersRes = await fetch(SERVER + '/api/admin/riders', { headers: ADMIN_HEADERS });
+    const allRiders = await ridersRes.json();
+    const riderMap = {};
+    allRiders.forEach(rd => { riderMap[rd.id] = rd; });
+
     el.innerHTML = rides.map(r => {
       const dur = (Date.now() - r.start_time) / 60000;
       const cost = pricing.base_fee + pricing.rate_per_minute * dur;
       const live = fleetData[r.scooter_id] || {};
+      const riderBal = riderMap[r.rider_id]?.balance || 0;
+      const remBal = Math.max(0, riderBal - cost);
+      const remMin = remBal > 0 ? remBal / pricing.rate_per_minute : 0;
       totalDur += dur; totalRev += cost;
-      return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+      return `<div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--border)">
         <div style="flex:1">
           <div style="font-size:13px;font-weight:600">${r.rider_name || '—'}</div>
           <div style="font-size:11px;color:var(--text-secondary)">${r.scooter_id} &middot; ${dur.toFixed(0)} min &middot; $${cost.toFixed(2)}</div>
         </div>
-        <span style="font-size:12px;font-family:var(--mono);color:var(--text-secondary)">${(live.speed||0).toFixed(0)} mph</span>
-        <span style="font-size:12px;font-family:var(--mono);color:${(live.battery||0)>50?'var(--green)':(live.battery||0)>20?'var(--amber)':'var(--red)'}">${(live.battery||0).toFixed(0)}%</span>
-        <button class="btn btn-danger" onclick="adminEndRide('${r.id}')" style="padding:6px 12px;font-size:11px;width:auto"><i class="ti ti-square-x"></i> End</button>
+        <div style="text-align:right;min-width:60px">
+          <div style="font-size:11px;font-family:var(--mono);color:${remMin>5?'var(--green)':remMin>0?'var(--amber)':'var(--red)'}">${Math.round(remMin)}m left</div>
+          <div style="font-size:10px;color:var(--text-tertiary)">$${remBal.toFixed(2)}</div>
+        </div>
+        <button class="btn btn-success" onclick="adminTopUp('${r.rider_id}')" style="padding:5px 10px;font-size:10px;width:auto"><i class="ti ti-plus"></i> Top up</button>
+        <button class="btn btn-danger" onclick="adminEndRide('${r.id}')" style="padding:5px 10px;font-size:10px;width:auto"><i class="ti ti-square-x"></i> End</button>
       </div>`;
     }).join('');
 
     document.getElementById('active-rides-avg').textContent = (totalDur / rides.length).toFixed(0) + 'm';
     document.getElementById('active-rides-rev').textContent = '$' + totalRev.toFixed(2);
   } catch (err) { console.error('Active rides error:', err); }
+}
+
+async function adminTopUp(riderId) {
+  const amount = prompt('Enter top-up amount ($):');
+  if (!amount || parseFloat(amount) <= 0) return;
+  await fetch(SERVER + '/api/admin/rider/' + riderId + '/topup', {
+    method: 'PUT', headers: ADMIN_HEADERS,
+    body: JSON.stringify({ amount: parseFloat(amount), notes: 'Mid-ride top-up' })
+  });
+  renderActiveRidesPage();
 }
 
 async function adminEndRide(rideId) {

@@ -180,9 +180,13 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
 
     <div class="status-card">
       <div class="status-icon" id="pay-icon"><i class="ti ti-credit-card"></i></div>
-      <div>
+      <div style="flex:1">
         <div class="status-label">Payment</div>
         <div class="status-value" id="pay-status-text">Awaiting payment</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:10px;color:var(--text-tertiary)">Balance</div>
+        <div style="font-size:18px;font-weight:700;font-family:var(--mono)" id="wait-balance">$0.00</div>
       </div>
     </div>
 
@@ -204,6 +208,18 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
       <div class="ride-scooter-id" id="ready-scooter-id">Ready to ride</div>
       <div class="ride-scooter-sub" id="ready-scooter-sub">Tap unlock to start your ride</div>
     </div>
+
+    <div class="ride-stats" style="margin-top:8px">
+      <div class="ride-stat">
+        <div class="ride-stat-val green" id="ready-balance">$0.00</div>
+        <div class="ride-stat-label">Balance</div>
+      </div>
+      <div class="ride-stat">
+        <div class="ride-stat-val blue" id="ready-minutes">0</div>
+        <div class="ride-stat-label">Minutes available</div>
+      </div>
+    </div>
+
     <div id="scan-error" class="error-msg"></div>
     <div class="spacer"></div>
     <button class="btn btn-success" id="unlock-btn" onclick="unlockScooter()" style="font-size:18px;padding:20px">
@@ -225,7 +241,15 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
       </div>
       <div class="ride-stat">
         <div class="ride-stat-val blue" id="ride-cost">$0.00</div>
-        <div class="ride-stat-label">Est. cost</div>
+        <div class="ride-stat-label">Cost so far</div>
+      </div>
+      <div class="ride-stat">
+        <div class="ride-stat-val green" id="ride-remaining-bal">$0.00</div>
+        <div class="ride-stat-label">Balance left</div>
+      </div>
+      <div class="ride-stat">
+        <div class="ride-stat-val" id="ride-remaining-min">0</div>
+        <div class="ride-stat-label">Minutes left</div>
       </div>
       <div class="ride-stat" style="grid-column:span 2">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
@@ -235,6 +259,14 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
         <div class="batt-bar"><div class="batt-fill" id="ride-battery-bar" style="width:0%;background:var(--green)"></div></div>
       </div>
     </div>
+
+    <!-- Low balance warning -->
+    <div id="low-balance-warn" style="display:none;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);border-radius:12px;padding:12px 16px;text-align:center;margin-bottom:8px">
+      <i class="ti ti-alert-triangle" style="color:var(--amber);font-size:18px;display:block;margin-bottom:4px"></i>
+      <div style="font-size:13px;font-weight:600;color:var(--amber)">Balance running low</div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">Visit the counter to top up and extend your ride</div>
+    </div>
+
     <div class="spacer"></div>
     <button class="btn btn-danger" onclick="endRide()" style="font-size:16px;padding:18px">
       <i class="ti ti-square-x"></i> End Ride
@@ -260,6 +292,10 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
       <div class="summary-row">
         <span class="summary-label">Battery used</span>
         <span class="summary-value" id="summary-battery">—</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-label">Remaining balance</span>
+        <span class="summary-value" style="color:var(--green)" id="summary-remaining">$0.00</span>
       </div>
     </div>
     <div class="spacer"></div>
@@ -352,8 +388,8 @@ async function checkStatus() {
       return;
     }
 
-    if (data.kycStatus === 'approved' && data.paymentStatus === 'paid') {
-      showReadyPage();
+    if (data.kycStatus === 'approved' && (data.balance || 0) > 0) {
+      showReadyPage(data);
       return;
     }
 
@@ -377,16 +413,18 @@ function showWaitingPage(data) {
   kycText.className = 'status-value ' + data.kycStatus;
   kycText.textContent = data.kycStatus === 'approved' ? 'Approved' : data.kycStatus === 'rejected' ? 'Rejected' : 'Pending review';
 
-  payIcon.className = 'status-icon ' + data.paymentStatus;
-  payText.className = 'status-value ' + data.paymentStatus;
-  payText.textContent = data.paymentStatus === 'paid' ? 'Paid' : 'Awaiting payment';
+  const hasBal = (data.balance || 0) > 0;
+  payIcon.className = 'status-icon ' + (hasBal ? 'paid' : 'unpaid');
+  payText.className = 'status-value ' + (hasBal ? 'paid' : 'unpaid');
+  payText.textContent = hasBal ? 'Paid' : 'Awaiting payment';
+  document.getElementById('wait-balance').textContent = '$' + (data.balance || 0).toFixed(2);
 
   // Poll every 5 seconds
   clearInterval(statusPollTimer);
   statusPollTimer = setInterval(checkStatus, 5000);
 }
 
-function showReadyPage() {
+function showReadyPage(data) {
   clearInterval(statusPollTimer);
   showPage('ready');
 
@@ -399,6 +437,11 @@ function showReadyPage() {
   } else {
     idEl.textContent = 'Ready to ride';
     subEl.textContent = 'An available scooter will be assigned to you';
+  }
+
+  if (data) {
+    document.getElementById('ready-balance').textContent = '$' + (data.balance || 0).toFixed(2);
+    document.getElementById('ready-minutes').textContent = Math.round(data.remainingMin || 0);
   }
 }
 
@@ -477,6 +520,17 @@ async function pollRide() {
     document.getElementById('ride-speed').textContent = (data.speed || 0).toFixed(0);
     document.getElementById('ride-cost').textContent = '$' + (data.estimatedCost || 0).toFixed(2);
 
+    // Balance & remaining time
+    const remBal = data.remainingBalance || 0;
+    const remMin = data.remainingMin || 0;
+    document.getElementById('ride-remaining-bal').textContent = '$' + remBal.toFixed(2);
+    document.getElementById('ride-remaining-bal').className = 'ride-stat-val ' + (remBal > 1 ? 'green' : remBal > 0 ? 'amber' : 'red');
+    document.getElementById('ride-remaining-min').textContent = Math.round(remMin);
+    document.getElementById('ride-remaining-min').className = 'ride-stat-val ' + (remMin > 5 ? 'blue' : remMin > 0 ? 'amber' : 'red');
+
+    // Low balance warning
+    document.getElementById('low-balance-warn').style.display = remMin <= 3 ? 'block' : 'none';
+
     const bp = data.battery || 0;
     const bpColor = bp > 50 ? 'var(--green)' : bp > 20 ? 'var(--amber)' : 'var(--red)';
     document.getElementById('ride-battery-pct').textContent = bp.toFixed(0) + '%';
@@ -523,6 +577,7 @@ function showSummary(summary) {
   document.getElementById('summary-scooter').textContent = summary.scooterId || '—';
   document.getElementById('summary-battery').textContent =
     (summary.startBattery || 0).toFixed(0) + '% -> ' + (summary.endBattery || 0).toFixed(0) + '%';
+  document.getElementById('summary-remaining').textContent = '$' + (summary.remainingBalance || 0).toFixed(2);
   currentRideId = null;
 }
 

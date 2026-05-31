@@ -45,6 +45,7 @@ db.exec(`
     selfie_path     TEXT DEFAULT NULL,
     kyc_status      TEXT DEFAULT 'pending',
     payment_status  TEXT DEFAULT 'unpaid',
+    balance         REAL DEFAULT 0,
     status          TEXT DEFAULT 'registered',
     created_at      INTEGER DEFAULT (strftime('%s','now') * 1000),
     updated_at      INTEGER DEFAULT (strftime('%s','now') * 1000)
@@ -100,6 +101,9 @@ db.exec(`
   INSERT OR IGNORE INTO pricing (id) VALUES (1);
 `);
 
+// Migration: add balance column if missing (for existing databases)
+try { db.exec(`ALTER TABLE riders ADD COLUMN balance REAL DEFAULT 0`); } catch(e) { /* column already exists */ }
+
 // ==========================================
 // SCOOTER HELPERS
 // ==========================================
@@ -120,6 +124,8 @@ const stmts = {
   updateKyc: db.prepare(`UPDATE riders SET kyc_status=?, updated_at=? WHERE id=?`),
   updatePayment: db.prepare(`UPDATE riders SET payment_status=?, updated_at=? WHERE id=?`),
   updateRiderStatus: db.prepare(`UPDATE riders SET status=?, updated_at=? WHERE id=?`),
+  addBalance: db.prepare(`UPDATE riders SET balance = balance + ?, payment_status = 'paid', updated_at=? WHERE id=?`),
+  deductBalance: db.prepare(`UPDATE riders SET balance = MAX(0, balance - ?), updated_at=? WHERE id=?`),
 
   // RIDE HELPERS
   createRide: db.prepare(`INSERT INTO rides (id, rider_id, scooter_id, start_time, start_battery) VALUES (?,?,?,?,?)`),
@@ -173,6 +179,8 @@ module.exports = {
   updateKyc(id, status)  { return stmts.updateKyc.run(status, Date.now(), id); },
   updatePayment(id, st)  { return stmts.updatePayment.run(st, Date.now(), id); },
   updateRiderStatus(id, st) { return stmts.updateRiderStatus.run(st, Date.now(), id); },
+  addBalance(id, amount) { return stmts.addBalance.run(amount, Date.now(), id); },
+  deductBalance(id, amount) { return stmts.deductBalance.run(amount, Date.now(), id); },
 
   // Rides
   createRide({ riderId, scooterId, startBattery }) {

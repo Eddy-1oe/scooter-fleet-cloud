@@ -155,11 +155,17 @@ app.get('/api/rider/:id/status', (req, res) => {
   if (!rider) return res.status(404).json({ error: 'Rider not found' });
 
   const activeRide = db.getActiveRideByRider(rider.id);
+  const pricing = db.getPricing();
+  const balance = rider.balance || 0;
+  const remainingMin = balance > 0 ? Math.max(0, (balance - pricing.base_fee) / pricing.rate_per_minute) : 0;
+
   res.json({
     riderId: rider.id,
     fullName: rider.full_name,
     kycStatus: rider.kyc_status,
     paymentStatus: rider.payment_status,
+    balance: Math.round(balance * 100) / 100,
+    remainingMin: Math.round(remainingMin * 10) / 10,
     status: rider.status,
     activeRide: activeRide ? {
       rideId: activeRide.id,
@@ -178,7 +184,12 @@ app.post('/api/scan', (req, res) => {
     const rider = db.getRider(riderId);
     if (!rider) return res.status(404).json({ error: 'Rider not found' });
     if (rider.kyc_status !== 'approved') return res.status(403).json({ error: 'KYC not approved', code: 'not_approved' });
-    if (rider.payment_status !== 'paid') return res.status(403).json({ error: 'Payment required', code: 'unpaid' });
+
+    // Check balance — must cover at least the base fee
+    const pricing = db.getPricing();
+    if ((rider.balance || 0) < pricing.base_fee) {
+      return res.status(403).json({ error: 'Insufficient balance. Please top up.', code: 'low_balance', balance: rider.balance || 0, required: pricing.base_fee });
+    }
 
     // Check rider doesn't already have an active ride
     const existingRide = db.getActiveRideByRider(riderId);
@@ -240,8 +251,12 @@ app.get('/api/rider/:id/ride', (req, res) => {
 
   const live = fleet[ride.scooter_id] || {};
   const pricing = db.getPricing();
+  const rider = db.getRider(ride.rider_id);
   const durationMin = (Date.now() - ride.start_time) / 60000;
   const estimatedCost = pricing.base_fee + (pricing.rate_per_minute * durationMin);
+  const balance = rider?.balance || 0;
+  const remainingBalance = Math.max(0, balance - estimatedCost);
+  const remainingMin = remainingBalance > 0 ? remainingBalance / pricing.rate_per_minute : 0;
 
   res.json({
     rideId: ride.id,
@@ -249,6 +264,9 @@ app.get('/api/rider/:id/ride', (req, res) => {
     startTime: ride.start_time,
     durationMin: Math.round(durationMin * 10) / 10,
     estimatedCost: Math.round(estimatedCost * 100) / 100,
+    balance: Math.round(balance * 100) / 100,
+    remainingBalance: Math.round(remainingBalance * 100) / 100,
+    remainingMin: Math.round(remainingMin * 10) / 10,
     battery: live.battery || 0,
     speed: live.speed || 0,
     mode: live.mode || '—',
@@ -268,13 +286,18 @@ app.post('/api/ride/:rideId/end', (req, res) => {
     const durationMin = (Date.now() - ride.start_time) / 60000;
     const cost = pricing.base_fee + (pricing.rate_per_minute * durationMin);
 
+    const finalCost = Math.round(cost * 100) / 100;
     db.endRide(ride.id, {
       endBattery: live.battery || 0,
       durationMin: Math.round(durationMin * 10) / 10,
       distanceMiles: Math.round(durationMin * (live.speed || 0) / 60 * 10) / 10,
       maxSpeedMph: live.speed || 0,
-      cost: Math.round(cost * 100) / 100
+      cost: finalCost
     });
+
+    // Deduct cost from rider balance
+    db.deductBalance(ride.rider_id, finalCost);
+    const updatedRider = db.getRider(ride.rider_id);
 
     db.setScooterStatus(ride.scooter_id, 'available');
     db.updateRiderStatus(ride.rider_id, 'registered');
@@ -290,10 +313,11 @@ app.post('/api/ride/:rideId/end', (req, res) => {
       ok: true,
       summary: {
         durationMin: Math.round(durationMin * 10) / 10,
-        cost: Math.round(cost * 100) / 100,
+        cost: finalCost,
         startBattery: ride.start_battery,
         endBattery: live.battery || 0,
-        scooterId: ride.scooter_id
+        scooterId: ride.scooter_id,
+        remainingBalance: Math.round((updatedRider?.balance || 0) * 100) / 100
       }
     });
   } catch (err) {
@@ -341,21 +365,44 @@ app.put('/api/admin/rider/:id/payment', adminAuth, (req, res) => {
     return res.status(400).json({ error: 'Invalid status' });
   }
 
-  db.updatePayment(req.params.id, status);
+  const parsedAmount = parseFloat(amount) || 0;
 
-  if (status === 'paid' && amount) {
+  if (status === 'paid' && parsedAmount > 0) {
+    // Add to rider's balance
+    db.addBalance(req.params.id, parsedAmount);
     db.createPayment({
       riderId: req.params.id,
-      amount: parseFloat(amount),
+      amount: parsedAmount,
       method: 'manual',
       status: 'approved',
       approvedBy: 'admin',
       notes: notes || ''
     });
+  } else {
+    db.updatePayment(req.params.id, status);
   }
 
-  db.audit('payment_update', `Rider ${req.params.id} payment ${status}${amount ? ', amount: ' + amount : ''}`, 'admin');
-  res.json({ ok: true });
+  db.audit('payment_update', `Rider ${req.params.id} payment ${status}${parsedAmount ? ', +$' + parsedAmount.toFixed(2) : ''}`, 'admin');
+  const updatedRider = db.getRider(req.params.id);
+  res.json({ ok: true, balance: updatedRider?.balance || 0 });
+});
+
+// PUT /api/admin/rider/:id/topup — add balance (works mid-ride too)
+app.put('/api/admin/rider/:id/topup', adminAuth, (req, res) => {
+  const { amount, notes } = req.body;
+  const parsedAmount = parseFloat(amount);
+  if (!parsedAmount || parsedAmount <= 0) return res.status(400).json({ error: 'Invalid amount' });
+
+  db.addBalance(req.params.id, parsedAmount);
+  db.createPayment({
+    riderId: req.params.id, amount: parsedAmount,
+    method: 'manual', status: 'approved', approvedBy: 'admin',
+    notes: notes || 'Top-up'
+  });
+
+  const rider = db.getRider(req.params.id);
+  db.audit('topup', `Rider ${req.params.id} topped up +$${parsedAmount.toFixed(2)}, balance: $${(rider?.balance||0).toFixed(2)}`, 'admin');
+  res.json({ ok: true, balance: rider?.balance || 0 });
 });
 
 // GET /api/admin/rides

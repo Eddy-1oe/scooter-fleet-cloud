@@ -3,9 +3,11 @@
 //
 //  Pin mapping (XIAO ESP32-C6):
 //  GPIO0  (RESET) -> D0  INPUT_PULLUP
-//  GPIO16 (RX)    -> D3  UART1 RX from scooter display
+//  GPIO16 (RX)    -> D3  UART0 RX from scooter display
 //  GPIO26 (BRAKE) -> D6  Optocoupler (HIGH=ON, LOW=OFF)
 //  GPIO15 (SW)    -> D5  BC337 NPN   (HIGH=ON, LOW=OFF)
+//  D1     (GPS)   -> D1  UART1 RX <- NEO-M7 TX
+//  D2     (GPS)   -> D2  UART1 TX -> NEO-M7 RX
 //
 //  Commands:
 //  brake_on     - engage brake
@@ -20,6 +22,7 @@
 // ============================================================
 
 #include <HardwareSerial.h>
+#include <TinyGPS++.h>
 #include <WiFi.h>
 #include <WiFiManager.h>
 #include <HTTPClient.h>
@@ -38,6 +41,9 @@
 #define BRAKE_ON   HIGH
 #define BRAKE_OFF  LOW
 
+#define GPS_RX_PIN D1
+#define GPS_TX_PIN D2
+
 // ==========================================
 // SCOOTER ID
 // Change this for each scooter (SCO-001, SCO-002, etc.)
@@ -54,8 +60,9 @@ String serverURL  = "https://scooter-fleet-cloud-production.up.railway.app";  //
 String serverIP   = "10.104.13.197";
 int    serverPort = 3000;
 
-HardwareSerial ScooterSerial(1);
-float smoothedSpeed = 0;
+HardwareSerial ScooterSerial(0);   // UART0 for scooter display (RX only on D3)
+HardwareSerial GPSSerial(1);       // UART1 for NEO-M7 GPS (D1 RX, D2 TX)
+TinyGPSPlus gps;
 
 // ==========================================
 // SCOOTER DATA STRUCTURE
@@ -72,7 +79,20 @@ struct ScooterData {
   bool    valid;
 };
 
+struct GPSData {
+  bool    valid;
+  double  latitude;
+  double  longitude;
+  float   altitudeM;
+  float   speedKph;
+  float   headingDeg;
+  int     satellites;
+  float   hdop;
+  char    timestamp[25];
+};
+
 ScooterData scooter;
+GPSData     scooterGPS;
 
 // ==========================================
 // PACKET BUFFER
@@ -288,6 +308,51 @@ void printStatus() {
   Serial.println("-----------------");
 }
 
+void printGPS() {
+  Serial.println("\n--- GPS Status ---");
+
+  // Diagnostics: confirm the module is actually talking
+  Serial.print("  Chars rx    : ");
+  Serial.println(gps.charsProcessed());
+  Serial.print("  Good frames : ");
+  Serial.println(gps.sentencesWithFix());
+  Serial.print("  Cksm fails  : ");
+  Serial.println(gps.failedChecksum());
+
+  Serial.print("  Satellites : ");
+  Serial.println(scooterGPS.valid ? scooterGPS.satellites : 0);
+
+  Serial.print("  Lat        : ");
+  if (scooterGPS.valid) Serial.println(scooterGPS.latitude, 6);
+  else Serial.println("invalid");
+
+  Serial.print("  Lng        : ");
+  if (scooterGPS.valid) Serial.println(scooterGPS.longitude, 6);
+  else Serial.println("invalid");
+
+  Serial.print("  Altitude   : ");
+  if (scooterGPS.valid) { Serial.print(scooterGPS.altitudeM); Serial.println(" m"); }
+  else Serial.println("invalid");
+
+  Serial.print("  Speed      : ");
+  if (scooterGPS.valid) { Serial.print(scooterGPS.speedKph); Serial.println(" km/h"); }
+  else Serial.println("invalid");
+
+  Serial.print("  Heading    : ");
+  if (scooterGPS.valid) { Serial.print(scooterGPS.headingDeg); Serial.println(" deg"); }
+  else Serial.println("invalid");
+
+  Serial.print("  HDOP       : ");
+  if (scooterGPS.valid) Serial.println(scooterGPS.hdop);
+  else Serial.println("invalid");
+
+  Serial.print("  Timestamp  : ");
+  if (scooterGPS.valid) Serial.println(scooterGPS.timestamp);
+  else Serial.println("invalid");
+
+  Serial.println("------------------");
+}
+
 void printHelp() {
   Serial.println("\n--- Commands ---");
   Serial.println("  brake_on   engage brake");
@@ -302,6 +367,7 @@ void printHelp() {
   Serial.println("  alarm      brake on + power off + power on");
   Serial.println("  alarmoff   alarm off");
   Serial.println("  zerostart  toggle zero/non-zero start");
+  Serial.println("  gps        print GPS data");
   Serial.println("  status     pin states");
   Serial.println("  help       this list");
   Serial.println("----------------");
@@ -386,10 +452,10 @@ void processUART() {
 void executeCommand(String action) {
   Serial.print("[CMD] ");
   Serial.println(action);
-  if      (action == "brake_on")  doBrakeOn();
-  else if (action == "brake_off") doBrakeOff();
+  if      (action == "brake_on"  || action == "brakeOn")  doBrakeOn();
+  else if (action == "brake_off" || action == "brakeOff") doBrakeOff();
   else if (action == "mode")      doSwMode();
-  else if (action == "headlight") doHeadLight();
+  else if (action == "headlight" || action == "light") doHeadLight();
   else if (action == "sidelight") doSideLight();
   else if (action == "walk")      doSwWalk();
   else if (action == "metric")    doMetric();
@@ -398,6 +464,7 @@ void executeCommand(String action) {
   else if (action == "alarmoff")  doAlarmOff();
   else if (action == "zerostart") doZeroStart();
   else if (action == "power")     doSwPower();
+  else { Serial.print("  Unknown command: "); Serial.println(action); }
 }
 
 // ==========================================
@@ -450,7 +517,7 @@ void pushTelemetry() {
   httpBegin(http, secure, url);
   http.addHeader("Content-Type", "application/json");
 
-  StaticJsonDocument<256> doc;
+  StaticJsonDocument<512> doc;
   doc["id"]      = SCOOTER_ID;
   doc["battery"] = scooter.battery;
   doc["voltage"] = scooter.voltage;
@@ -460,6 +527,19 @@ void pushTelemetry() {
   doc["brake"]   = scooter.brakeActive;
   doc["light"]   = scooter.lightOn;
   doc["diag"]    = scooter.diagMode;
+
+  JsonObject g     = doc.createNestedObject("gps");
+  g["valid"]       = scooterGPS.valid;
+  if (scooterGPS.valid) {
+    g["lat"]       = scooterGPS.latitude;
+    g["lng"]       = scooterGPS.longitude;
+    g["alt"]       = scooterGPS.altitudeM;
+    g["speed_kph"] = scooterGPS.speedKph;
+    g["heading"]   = scooterGPS.headingDeg;
+    g["satellites"]= scooterGPS.satellites;
+    g["hdop"]      = scooterGPS.hdop;
+    g["utc"]       = scooterGPS.timestamp;
+  }
 
   String body;
   serializeJson(doc, body);
@@ -521,11 +601,33 @@ void maintainWifi() {
 }
 
 // ==========================================
-// PACKET BUFFER
+// GPS PROCESSING
 // ==========================================
-byte packetBuf[14];
-int  bufIndex  = 0;
-unsigned long lastByte = 0;
+void processGPS() {
+  while (GPSSerial.available()) {
+    gps.encode(GPSSerial.read());
+  }
+
+  // Update GPS data structure
+  if (gps.location.isValid()) {
+    scooterGPS.valid = true;
+    scooterGPS.latitude = gps.location.lat();
+    scooterGPS.longitude = gps.location.lng();
+    scooterGPS.altitudeM = gps.altitude.meters();
+    scooterGPS.speedKph = gps.speed.kmph();
+    scooterGPS.headingDeg = gps.course.deg();
+    scooterGPS.satellites = gps.satellites.value();
+    scooterGPS.hdop = gps.hdop.hdop();
+
+    if (gps.date.isValid() && gps.time.isValid()) {
+      snprintf(scooterGPS.timestamp, 25, "%04d-%02d-%02d %02d:%02d:%02d",
+               gps.date.year(), gps.date.month(), gps.date.day(),
+               gps.time.hour(), gps.time.minute(), gps.time.second());
+    }
+  } else {
+    scooterGPS.valid = false;
+  }
+}
 
 // ==========================================
 // SETUP
@@ -542,6 +644,7 @@ void setup() {
   digitalWrite(SW_PIN,    LOW);
 
   ScooterSerial.begin(9600, SERIAL_8N1, RX_PIN, -1);
+  GPSSerial.begin(9600, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
 
   // Load server IP from flash
   loadServerConfig();
@@ -619,6 +722,7 @@ void loop() {
         else if (cmdBuffer == "alarmoff") doAlarmOff();
         else if (cmdBuffer == "zerostart") doZeroStart();
         else if (cmdBuffer == "power")     doSwPower();
+        else if (cmdBuffer == "gps")       printGPS();
         else if (cmdBuffer == "status")    printStatus();
         else if (cmdBuffer == "help")      printHelp();
         else {
@@ -634,6 +738,7 @@ void loop() {
   }
 
   processUART();
+  processGPS();
   pushTelemetry();
   pollCommands();
   maintainWifi();

@@ -6,8 +6,8 @@
 //  GPIO16 (RX)    -> D3  UART1 RX from scooter display
 //  GPIO26 (BRAKE) -> D6  Optocoupler (HIGH=ON, LOW=OFF)
 //  GPIO15 (SW)    -> D5  BC337 NPN   (HIGH=ON, LOW=OFF)
-//  D1     (GPS)   -> D1  ESP32 RX <- NEO-M7 TX
-//  D2     (GPS)   -> D2  ESP32 TX -> NEO-M7 RX
+//  GPIO14 (GPS)   -> D14 SoftwareSerial RX from NEO-7M TX
+//  GPIO13 (GPS)   -> D13 SoftwareSerial TX to NEO-7M RX
 //
 //  Commands:
 //  brake_on     - engage brake
@@ -42,10 +42,10 @@
 #define BRAKE_ON   HIGH
 #define BRAKE_OFF  LOW
 
-#define GPS_RX_PIN D1
-#define GPS_TX_PIN D2
+#define GPS_RX_PIN 14
+#define GPS_TX_PIN 13
 
-SoftwareSerial GPSSerial(GPS_RX_PIN, GPS_TX_PIN);
+SoftwareSerial gpsSerial(GPS_RX_PIN, GPS_TX_PIN);
 TinyGPSPlus gps;
 
 // ==========================================
@@ -448,8 +448,8 @@ void httpBegin(HTTPClient& http, WiFiClientSecure& secure, String url) {
 // GPS READING
 // ==========================================
 void readGPS() {
-  while (GPSSerial.available()) {
-    char c = GPSSerial.read();
+  while (gpsSerial.available()) {
+    char c = gpsSerial.read();
     gps.encode(c);
   }
 
@@ -476,7 +476,7 @@ void readGPS() {
   }
 
   if (millis() > 10000 && gps.charsProcessed() < 10) {
-    Serial.println("[GPS] No data — check wiring: GPS TX->D1, GPS RX->D2");
+    Serial.println("[GPS] No data — check wiring: TX->D14, RX->D13");
   }
 }
 
@@ -607,8 +607,8 @@ void setup() {
   digitalWrite(SW_PIN,    LOW);
 
   ScooterSerial.begin(9600, SERIAL_8N1, RX_PIN, -1);
-  GPSSerial.begin(9600);
-  Serial.println("GPS serial started on D1(RX)/D2(TX)");
+  gpsSerial.begin(9600);
+  Serial.println("GPS serial started on D14/D13");
 
   // Load server IP from flash
   loadServerConfig();

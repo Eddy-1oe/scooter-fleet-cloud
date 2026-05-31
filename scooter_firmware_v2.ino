@@ -519,6 +519,13 @@ void pushTelemetry() {
   Serial.print("[PUSH] Voltage: ");
   Serial.println(scooter.voltage);
 
+  // GPS diagnostics — confirm the module is actually talking
+  Serial.print("[GPS] chars:");      Serial.print(gps.charsProcessed());
+  Serial.print(" fixSentences:");    Serial.print(gps.sentencesWithFix());
+  Serial.print(" cksumFail:");       Serial.print(gps.failedChecksum());
+  Serial.print(" sats:");            Serial.print(gps.satellites.isValid() ? (int)gps.satellites.value() : 0);
+  Serial.print(" fix:");             Serial.println(scooterGPS.valid ? "YES" : "no");
+
   WiFiClientSecure secure;
   HTTPClient http;
   httpBegin(http, secure, url);
@@ -651,6 +658,12 @@ void setup() {
   digitalWrite(SW_PIN,    LOW);
 
   ScooterSerial.begin(9600, SERIAL_8N1, RX_PIN, -1);
+
+  // GPS: enlarge RX buffer so NMEA isn't lost during blocking HTTP calls.
+  // At 9600 baud (~960 B/s) the combined push+poll HTTP stall (~1.7 s) would
+  // overflow the default 256-byte FIFO and corrupt sentences. 4 KB (~4 s)
+  // gives comfortable margin. Must be called BEFORE begin().
+  GPSSerial.setRxBufferSize(4096);
   GPSSerial.begin(9600, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
 
   // Load server IP from flash

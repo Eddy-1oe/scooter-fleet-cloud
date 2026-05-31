@@ -2489,6 +2489,12 @@ function fetchFleet() {
     fleetData = fleet;
     demoMode = false;
 
+    // Drop demo/seed GPS markers (NYC coords) once we are live — only real
+    // scooters with an actual GPS fix should appear on the map.
+    Object.keys(scooterGPS).forEach(id => {
+      if(!scooterGPS[id]._real) delete scooterGPS[id];
+    });
+
     // Bridge GPS data from live telemetry into scooterGPS for map rendering
     let firstRealFix = !Object.keys(scooterGPS).some(id => scooterGPS[id]._real);
     Object.keys(fleet).forEach(id => {

@@ -485,12 +485,12 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
         </div>
         <div class="card-body">
           <div class="bc-grid">
-            <button class="bc-action red" onclick="broadcastCmd('brakeOn')">
+            <button class="bc-action red" onclick="broadcastCmd('brake_on')">
               <i class="ti ti-lock bc-icon red" aria-hidden="true"></i>
               <span class="bc-name">Lock ALL</span>
               <span class="bc-desc">Engage brake on every online scooter</span>
             </button>
-            <button class="bc-action green" onclick="broadcastCmd('brakeOff')">
+            <button class="bc-action green" onclick="broadcastCmd('brake_off')">
               <i class="ti ti-lock-open bc-icon green" aria-hidden="true"></i>
               <span class="bc-name">Unlock ALL</span>
               <span class="bc-desc">Release brake on every online scooter</span>
@@ -510,10 +510,45 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
               <span class="bc-name">Cycle mode ALL</span>
               <span class="bc-desc">Advance ECO → D → S on all units</span>
             </button>
-            <button class="bc-action blue" onclick="broadcastCmd('light')">
+            <button class="bc-action blue" onclick="broadcastCmd('headlight')">
               <i class="ti ti-bulb bc-icon blue" aria-hidden="true"></i>
-              <span class="bc-name">Toggle lights ALL</span>
-              <span class="bc-desc">Flip headlight state fleet-wide</span>
+              <span class="bc-name">Headlight ALL</span>
+              <span class="bc-desc">Toggle headlight fleet-wide</span>
+            </button>
+            <button class="bc-action blue" onclick="broadcastCmd('sidelight')">
+              <i class="ti ti-sun-low bc-icon blue" aria-hidden="true"></i>
+              <span class="bc-name">Side lights ALL</span>
+              <span class="bc-desc">Toggle side lights fleet-wide</span>
+            </button>
+            <button class="bc-action amber" onclick="broadcastCmd('walk')">
+              <i class="ti ti-walk bc-icon amber" aria-hidden="true"></i>
+              <span class="bc-name">Walk mode ALL</span>
+              <span class="bc-desc">Activate walk mode fleet-wide</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="max-width:600px">
+        <div class="card-hd">
+          <span class="card-title"><i class="ti ti-shield"></i> Security</span>
+        </div>
+        <div class="card-body">
+          <div class="bc-grid">
+            <button class="bc-action red" onclick="broadcastCmd('alarm')">
+              <i class="ti ti-bell-ringing bc-icon red" aria-hidden="true"></i>
+              <span class="bc-name">Alarm ALL</span>
+              <span class="bc-desc">Activate alarm on every scooter</span>
+            </button>
+            <button class="bc-action green" onclick="broadcastCmd('alarmoff')">
+              <i class="ti ti-bell-off bc-icon green" aria-hidden="true"></i>
+              <span class="bc-name">Alarm OFF ALL</span>
+              <span class="bc-desc">Deactivate alarm fleet-wide</span>
+            </button>
+            <button class="bc-action red" onclick="broadcastCmd('power')">
+              <i class="ti ti-power bc-icon red" aria-hidden="true"></i>
+              <span class="bc-name">Power ALL</span>
+              <span class="bc-desc">Toggle power on every scooter (3s hold)</span>
             </button>
           </div>
         </div>
@@ -1206,11 +1241,17 @@ function renderFleet(fleet) {
         return `<div class="gps-row"><span class="gps-pill nofix"><i class="ti ti-satellite-off" style="font-size:9px"></i>&nbsp;No GPS fix</span></div>`;
       })()}
       <div class="ctrl-grid">
-        <button class="ctrl-btn danger span2" onclick="sendCmd('${id}','brakeOn')" aria-label="Lock ${id}"><i class="ti ti-lock"></i>Lock / Brake ON</button>
-        <button class="ctrl-btn success span2" onclick="sendCmd('${id}','brakeOff')" aria-label="Unlock ${id}"><i class="ti ti-lock-open"></i>Unlock / Brake OFF</button>
+        <button class="ctrl-btn danger span2" onclick="sendCmd('${id}','brake_on')" aria-label="Lock ${id}"><i class="ti ti-lock"></i>Lock / Brake ON</button>
+        <button class="ctrl-btn success span2" onclick="sendCmd('${id}','brake_off')" aria-label="Unlock ${id}"><i class="ti ti-lock-open"></i>Unlock / Brake OFF</button>
         <button class="ctrl-btn warn" onclick="sendCmd('${id}','mode')" aria-label="Cycle mode ${id}"><i class="ti ti-bolt"></i>Cycle mode</button>
-        <button class="ctrl-btn info" onclick="sendCmd('${id}','light')" aria-label="Toggle light ${id}"><i class="ti ti-bulb"></i>Toggle light</button>
+        <button class="ctrl-btn info" onclick="sendCmd('${id}','headlight')" aria-label="Headlight ${id}"><i class="ti ti-bulb"></i>Headlight</button>
+        <button class="ctrl-btn info" onclick="sendCmd('${id}','sidelight')" aria-label="Sidelight ${id}"><i class="ti ti-sun-low"></i>Side lights</button>
         <button class="ctrl-btn" onclick="sendCmd('${id}','walk')" aria-label="Walk mode ${id}"><i class="ti ti-walk"></i>Walk mode</button>
+        <button class="ctrl-btn" onclick="sendCmd('${id}','metric')" aria-label="Metric ${id}"><i class="ti ti-ruler-measure"></i>Metric/Imp</button>
+        <button class="ctrl-btn" onclick="sendCmd('${id}','cruise')" aria-label="Cruise ${id}"><i class="ti ti-gps"></i>Cruise</button>
+        <button class="ctrl-btn danger" onclick="sendCmd('${id}','alarm')" aria-label="Alarm ${id}"><i class="ti ti-bell-ringing"></i>Alarm ON</button>
+        <button class="ctrl-btn success" onclick="sendCmd('${id}','alarmoff')" aria-label="Alarm off ${id}"><i class="ti ti-bell-off"></i>Alarm OFF</button>
+        <button class="ctrl-btn" onclick="sendCmd('${id}','zerostart')" aria-label="Zero start ${id}"><i class="ti ti-brand-speedtest"></i>Zero Start</button>
         <button class="ctrl-btn danger" onclick="sendCmd('${id}','power')" aria-label="Power ${id}"><i class="ti ti-power"></i>Power ON/OFF</button>
       </div>
       <div class="lastseen" id="ls-${id}">Last seen ${timeSince(d.lastSeen)}</div>
@@ -2252,9 +2293,9 @@ function sendCmd(id, action) {
   const card = document.getElementById('card-'+id);
   if(card){card.classList.add('cmd-flash');setTimeout(()=>card.classList.remove('cmd-flash'),400);}
   if(demoMode) {
-    if(action==='brakeOn') fleetData[id]&&(fleetData[id].brake=true);
-    if(action==='brakeOff') fleetData[id]&&(fleetData[id].brake=false);
-    if(action==='light') fleetData[id]&&(fleetData[id].light=!fleetData[id].light);
+    if(action==='brake_on'||action==='brakeOn') fleetData[id]&&(fleetData[id].brake=true);
+    if(action==='brake_off'||action==='brakeOff') fleetData[id]&&(fleetData[id].brake=false);
+    if(action==='headlight'||action==='light') fleetData[id]&&(fleetData[id].light=!fleetData[id].light);
     if(action==='mode'){const modes=['ECO','D','S'];if(fleetData[id]){const i=modes.indexOf(fleetData[id].mode);fleetData[id].mode=modes[(i+1)%3];}}
     renderFleet(fleetData);
     return;
@@ -2266,7 +2307,7 @@ function broadcastCmd(action) {
   const ids = Object.keys(fleetData);
   if(!ids.length) return;
   ids.forEach(id => sendCmd(id, action));
-  const labels = {brakeOn:'Lock ALL',brakeOff:'Unlock ALL',mode:'Cycle mode ALL',light:'Toggle lights ALL'};
+  const labels = {brake_on:'Lock ALL',brake_off:'Unlock ALL',mode:'Cycle mode ALL',headlight:'Headlight ALL',sidelight:'Side lights ALL',walk:'Walk mode ALL',alarm:'Alarm ALL',alarmoff:'Alarm OFF ALL',power:'Power ALL'};
   addAlert('info', `${labels[action]||action} — sent to ${ids.length} scooter${ids.length!==1?'s':''}`, true);
 }
 

@@ -1,5 +1,7 @@
 const express = require('express');
 const app = express();
+
+// Railway and other cloud platforms provide the PORT via environment variables
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
@@ -10,6 +12,14 @@ app.use(express.static('public'));
 // Keyed by scooter ID
 // ==========================================
 const fleet = {};
+
+// ==========================================
+// SCOOTER HISTORY
+// Stores historical telemetry for each scooter
+// Keyed by scooter ID, value is array of telemetry entries
+// ==========================================
+const scooterHistory = {};
+const MAX_HISTORY_ENTRIES = 100; // Keep last 100 entries per scooter
 
 // ==========================================
 // SCOOTER PUSHES TELEMETRY HERE
@@ -25,6 +35,18 @@ app.post('/telemetry', (req, res) => {
     lastSeen: Date.now()
   };
 
+  // Store history
+  if (!scooterHistory[data.id]) scooterHistory[data.id] = [];
+  scooterHistory[data.id].push({
+    ...data,
+    timestamp: Date.now()
+  });
+
+  // Keep only last MAX_HISTORY_ENTRIES
+  if (scooterHistory[data.id].length > MAX_HISTORY_ENTRIES) {
+    scooterHistory[data.id] = scooterHistory[data.id].slice(-MAX_HISTORY_ENTRIES);
+  }
+
   console.log(`[${data.id}] Battery: ${data.battery}% Speed: ${data.speed} mph Mode: ${data.mode}`);
   res.json({ ok: true });
 });
@@ -35,14 +57,14 @@ app.post('/telemetry', (req, res) => {
 // Returns all scooters and their state
 // ==========================================
 app.get('/fleet', (req, res) => {
-  // Mark scooters offline if not seen for 5 seconds
+  // Mark scooters offline if not seen for 10 seconds (increased for cloud latency)
   const now = Date.now();
   const result = {};
 
   Object.keys(fleet).forEach(id => {
     result[id] = {
       ...fleet[id],
-      online: (now - fleet[id].lastSeen) < 5000
+      online: (now - fleet[id].lastSeen) < 10000
     };
   });
 
@@ -83,16 +105,29 @@ app.get('/commands/:id', (req, res) => {
 });
 
 // ==========================================
-// HEALTH CHECK (Railway uses this)
+// APP FETCHES HISTORY FOR A SPECIFIC SCOOTER
+// GET /history/:id
+// Returns historical telemetry data for a scooter
 // ==========================================
-app.get('/health', (req, res) => res.json({ status: 'ok' }));
+app.get('/history/:id', (req, res) => {
+  const id = req.params.id;
+  const history = scooterHistory[id] || [];
+  res.json({ history });
+});
+
+// ==========================================
+// HEALTH CHECK
+// ==========================================
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
 
 // ==========================================
 // START SERVER
 // ==========================================
 app.listen(PORT, '0.0.0.0', () => {
   console.log('=============================');
-  console.log('Scooter Fleet Server running');
-  console.log(`Open in browser: http://localhost:${PORT}`);
+  console.log('Scooter Fleet Cloud Server running');
+  console.log(`Listening on port: ${PORT}`);
   console.log('=============================');
 });

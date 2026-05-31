@@ -9,6 +9,13 @@
 //  D1     (GPS)   -> D1  UART1 RX <- NEO-M7 TX
 //  D2     (GPS)   -> D2  UART1 TX -> NEO-M7 RX
 //
+//  UART allocation (XIAO ESP32-C6, "USB CDC On Boot" = Enabled):
+//    Serial  = USB-CDC console (115200)
+//    UART0   = scooter display  (RX on D3)
+//    UART1   = NEO-M7 GPS        (RX D1 / TX D2)
+//  If scooter telemetry stops after flashing, confirm "USB CDC On Boot"
+//  is Enabled so the console stays on USB and UART0 is free.
+//
 //  Commands:
 //  brake_on     - engage brake
 //  brake_off    - release brake

@@ -58,6 +58,8 @@ db.exec(`
     start_time      INTEGER NOT NULL,
     end_time        INTEGER DEFAULT NULL,
     duration_min    REAL DEFAULT 0,
+    paused_min      REAL DEFAULT 0,
+    last_poll       INTEGER DEFAULT NULL,
     distance_miles  REAL DEFAULT 0,
     max_speed_mph   REAL DEFAULT 0,
     start_battery   REAL DEFAULT 0,
@@ -101,8 +103,10 @@ db.exec(`
   INSERT OR IGNORE INTO pricing (id) VALUES (1);
 `);
 
-// Migration: add balance column if missing (for existing databases)
-try { db.exec(`ALTER TABLE riders ADD COLUMN balance REAL DEFAULT 0`); } catch(e) { /* column already exists */ }
+// Migrations: add columns if missing (for existing databases)
+try { db.exec(`ALTER TABLE riders ADD COLUMN balance REAL DEFAULT 0`); } catch(e) {}
+try { db.exec(`ALTER TABLE rides ADD COLUMN paused_min REAL DEFAULT 0`); } catch(e) {}
+try { db.exec(`ALTER TABLE rides ADD COLUMN last_poll INTEGER DEFAULT NULL`); } catch(e) {}
 
 // ==========================================
 // SCOOTER HELPERS
@@ -133,7 +137,9 @@ const stmts = {
   getActiveRideByRider: db.prepare(`SELECT * FROM rides WHERE rider_id = ? AND status = 'active' LIMIT 1`),
   getActiveRideByScooter: db.prepare(`SELECT * FROM rides WHERE scooter_id = ? AND status = 'active' LIMIT 1`),
   getAllActiveRides: db.prepare(`SELECT r.*, rd.full_name AS rider_name, rd.phone AS rider_phone FROM rides r JOIN riders rd ON r.rider_id = rd.id WHERE r.status = 'active' ORDER BY r.start_time DESC`),
-  endRide: db.prepare(`UPDATE rides SET end_time=?, duration_min=?, distance_miles=?, max_speed_mph=?, end_battery=?, cost=?, status='completed' WHERE id=?`),
+  updateRidePause: db.prepare(`UPDATE rides SET paused_min = paused_min + ?, last_poll = ? WHERE id = ?`),
+  updateRideLastPoll: db.prepare(`UPDATE rides SET last_poll = ? WHERE id = ?`),
+  endRide: db.prepare(`UPDATE rides SET end_time=?, duration_min=?, paused_min=?, distance_miles=?, max_speed_mph=?, end_battery=?, cost=?, status='completed' WHERE id=?`),
   getCompletedRides: db.prepare(`SELECT r.*, rd.full_name AS rider_name, rd.phone AS rider_phone FROM rides r JOIN riders rd ON r.rider_id = rd.id WHERE r.status = 'completed' ORDER BY r.end_time DESC LIMIT ?`),
   getRidesByRider: db.prepare(`SELECT * FROM rides WHERE rider_id = ? ORDER BY start_time DESC`),
 
@@ -192,9 +198,11 @@ module.exports = {
   getActiveRideByRider(rid)    { return stmts.getActiveRideByRider.get(rid); },
   getActiveRideByScooter(sid)  { return stmts.getActiveRideByScooter.get(sid); },
   getAllActiveRides()           { return stmts.getAllActiveRides.all(); },
-  endRide(id, { endBattery, durationMin, distanceMiles, maxSpeedMph, cost }) {
-    return stmts.endRide.run(Date.now(), durationMin || 0, distanceMiles || 0, maxSpeedMph || 0, endBattery || 0, cost || 0, id);
+  endRide(id, { endBattery, durationMin, pausedMin, distanceMiles, maxSpeedMph, cost }) {
+    return stmts.endRide.run(Date.now(), durationMin || 0, pausedMin || 0, distanceMiles || 0, maxSpeedMph || 0, endBattery || 0, cost || 0, id);
   },
+  addPausedTime(id, minutes) { return stmts.updateRidePause.run(minutes, Date.now(), id); },
+  updateLastPoll(id) { return stmts.updateRideLastPoll.run(Date.now(), id); },
   getCompletedRides(limit = 50) { return stmts.getCompletedRides.all(limit); },
   getRidesByRider(rid)          { return stmts.getRidesByRider.all(rid); },
 

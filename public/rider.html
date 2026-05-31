@@ -514,8 +514,16 @@ function showRidePage(scooterId) {
 async function pollRide() {
   try {
     const res = await fetch(SERVER + '/api/rider/' + riderId + '/ride');
-    if (res.status === 404) { clearInterval(ridePollTimer); return; }
+    if (res.status === 404) { clearInterval(ridePollTimer); clearInterval(rideTimer); return; }
     const data = await res.json();
+
+    // Server auto-ended the ride (balance depleted)
+    if (data.ended) {
+      clearInterval(rideTimer);
+      clearInterval(ridePollTimer);
+      showSummary(data.summary);
+      return;
+    }
 
     document.getElementById('ride-speed').textContent = (data.speed || 0).toFixed(0);
     document.getElementById('ride-cost').textContent = '$' + (data.estimatedCost || 0).toFixed(2);
@@ -529,7 +537,22 @@ async function pollRide() {
     document.getElementById('ride-remaining-min').className = 'ride-stat-val ' + (remMin > 5 ? 'blue' : remMin > 0 ? 'amber' : 'red');
 
     // Low balance warning
-    document.getElementById('low-balance-warn').style.display = remMin <= 3 ? 'block' : 'none';
+    document.getElementById('low-balance-warn').style.display = remMin <= 3 && !data.billingPaused ? 'block' : 'none';
+
+    // Billing paused indicator (battery < 5%)
+    let pauseEl = document.getElementById('billing-paused-info');
+    if (!pauseEl) {
+      pauseEl = document.createElement('div');
+      pauseEl.id = 'billing-paused-info';
+      pauseEl.style.cssText = 'background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);border-radius:12px;padding:12px 16px;text-align:center;margin-bottom:8px';
+      document.getElementById('low-balance-warn').insertAdjacentElement('afterend', pauseEl);
+    }
+    if (data.billingPaused) {
+      pauseEl.style.display = 'block';
+      pauseEl.innerHTML = '<i class="ti ti-battery-1" style="color:var(--green);font-size:18px;display:block;margin-bottom:4px"></i><div style="font-size:13px;font-weight:600;color:var(--green)">Billing paused</div><div style="font-size:12px;color:var(--text-secondary);margin-top:2px">Battery is below 5% — you are not being charged</div>';
+    } else {
+      pauseEl.style.display = 'none';
+    }
 
     const bp = data.battery || 0;
     const bpColor = bp > 50 ? 'var(--green)' : bp > 20 ? 'var(--amber)' : 'var(--red)';
@@ -573,7 +596,9 @@ async function endRide() {
 function showSummary(summary) {
   showPage('summary');
   document.getElementById('summary-cost').textContent = '$' + (summary.cost || 0).toFixed(2);
-  document.getElementById('summary-duration').textContent = (summary.durationMin || 0).toFixed(1) + ' min';
+  const billed = summary.billableMin || summary.durationMin || 0;
+  const paused = summary.pausedMin || 0;
+  document.getElementById('summary-duration').textContent = billed.toFixed(1) + ' min' + (paused > 0 ? ' (' + paused.toFixed(1) + ' min paused)' : '');
   document.getElementById('summary-scooter').textContent = summary.scooterId || '—';
   document.getElementById('summary-battery').textContent =
     (summary.startBattery || 0).toFixed(0) + '% -> ' + (summary.endBattery || 0).toFixed(0) + '%';

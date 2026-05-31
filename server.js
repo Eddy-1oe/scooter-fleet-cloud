@@ -244,6 +244,53 @@ app.post('/api/scan', (req, res) => {
   }
 });
 
+// ── Billable time helper ──
+// Time always ticks UNLESS battery < 5% (not rider's fault)
+function calcRideBilling(ride, live, pricing) {
+  const now = Date.now();
+  const totalMin = (now - ride.start_time) / 60000;
+  const battery = live?.battery ?? 100;
+  let pausedMin = ride.paused_min || 0;
+
+  // If battery < 5%, accumulate paused time since last poll
+  if (battery < 5 && ride.last_poll) {
+    const sinceLast = (now - ride.last_poll) / 60000;
+    pausedMin += sinceLast;
+    db.addPausedTime(ride.id, sinceLast);
+  } else {
+    db.updateLastPoll(ride.id);
+  }
+
+  const billableMin = Math.max(0, totalMin - pausedMin);
+  const cost = pricing.base_fee + (pricing.rate_per_minute * billableMin);
+
+  return { totalMin, billableMin, pausedMin, cost: Math.round(cost * 100) / 100, battery };
+}
+
+// ── Auto-end ride when balance depleted ──
+function autoEndRide(ride, live, pricing, reason) {
+  const { billableMin, pausedMin, cost } = calcRideBilling(ride, live, pricing);
+
+  db.endRide(ride.id, {
+    endBattery: live?.battery || 0,
+    durationMin: Math.round(billableMin * 10) / 10,
+    pausedMin: Math.round(pausedMin * 10) / 10,
+    distanceMiles: 0,
+    maxSpeedMph: live?.speed || 0,
+    cost
+  });
+
+  db.deductBalance(ride.rider_id, cost);
+  db.setScooterStatus(ride.scooter_id, 'available');
+  db.updateRiderStatus(ride.rider_id, 'registered');
+
+  if (!pendingCommands[ride.scooter_id]) pendingCommands[ride.scooter_id] = [];
+  pendingCommands[ride.scooter_id].push('brake_on');
+
+  db.audit('ride_auto_end', `${reason}: ride ${ride.id} on ${ride.scooter_id}, cost: $${cost}`, 'system');
+  console.log(`[RIDE] Auto-ended (${reason}): ${ride.scooter_id}, cost: $${cost}`);
+}
+
 // GET /api/rider/:id/ride — get active ride + live telemetry
 app.get('/api/rider/:id/ride', (req, res) => {
   const ride = db.getActiveRideByRider(req.params.id);
@@ -252,22 +299,44 @@ app.get('/api/rider/:id/ride', (req, res) => {
   const live = fleet[ride.scooter_id] || {};
   const pricing = db.getPricing();
   const rider = db.getRider(ride.rider_id);
-  const durationMin = (Date.now() - ride.start_time) / 60000;
-  const estimatedCost = pricing.base_fee + (pricing.rate_per_minute * durationMin);
   const balance = rider?.balance || 0;
-  const remainingBalance = Math.max(0, balance - estimatedCost);
+
+  const billing = calcRideBilling(ride, live, pricing);
+
+  // Auto-end if balance depleted
+  if (balance <= billing.cost && billing.billableMin > 0.5) {
+    autoEndRide(ride, live, pricing, 'balance depleted');
+    const updatedRider = db.getRider(ride.rider_id);
+    return res.json({
+      ended: true,
+      reason: 'balance_depleted',
+      summary: {
+        durationMin: Math.round(billing.billableMin * 10) / 10,
+        pausedMin: Math.round(billing.pausedMin * 10) / 10,
+        cost: billing.cost,
+        scooterId: ride.scooter_id,
+        remainingBalance: Math.round((updatedRider?.balance || 0) * 100) / 100
+      }
+    });
+  }
+
+  const remainingBalance = Math.max(0, balance - billing.cost);
   const remainingMin = remainingBalance > 0 ? remainingBalance / pricing.rate_per_minute : 0;
 
   res.json({
     rideId: ride.id,
     scooterId: ride.scooter_id,
     startTime: ride.start_time,
-    durationMin: Math.round(durationMin * 10) / 10,
-    estimatedCost: Math.round(estimatedCost * 100) / 100,
+    totalMin: Math.round(billing.totalMin * 10) / 10,
+    billableMin: Math.round(billing.billableMin * 10) / 10,
+    pausedMin: Math.round(billing.pausedMin * 10) / 10,
+    estimatedCost: billing.cost,
     balance: Math.round(balance * 100) / 100,
     remainingBalance: Math.round(remainingBalance * 100) / 100,
     remainingMin: Math.round(remainingMin * 10) / 10,
-    battery: live.battery || 0,
+    lowBattery: billing.battery < 5,
+    billingPaused: billing.battery < 5,
+    battery: billing.battery,
     speed: live.speed || 0,
     mode: live.mode || '—',
     gps: live.gps || null
@@ -283,20 +352,19 @@ app.post('/api/ride/:rideId/end', (req, res) => {
 
     const live = fleet[ride.scooter_id] || {};
     const pricing = db.getPricing();
-    const durationMin = (Date.now() - ride.start_time) / 60000;
-    const cost = pricing.base_fee + (pricing.rate_per_minute * durationMin);
+    const billing = calcRideBilling(ride, live, pricing);
 
-    const finalCost = Math.round(cost * 100) / 100;
     db.endRide(ride.id, {
       endBattery: live.battery || 0,
-      durationMin: Math.round(durationMin * 10) / 10,
-      distanceMiles: Math.round(durationMin * (live.speed || 0) / 60 * 10) / 10,
+      durationMin: Math.round(billing.billableMin * 10) / 10,
+      pausedMin: Math.round(billing.pausedMin * 10) / 10,
+      distanceMiles: Math.round(billing.billableMin * (live.speed || 0) / 60 * 10) / 10,
       maxSpeedMph: live.speed || 0,
-      cost: finalCost
+      cost: billing.cost
     });
 
     // Deduct cost from rider balance
-    db.deductBalance(ride.rider_id, finalCost);
+    db.deductBalance(ride.rider_id, billing.cost);
     const updatedRider = db.getRider(ride.rider_id);
 
     db.setScooterStatus(ride.scooter_id, 'available');
@@ -306,14 +374,15 @@ app.post('/api/ride/:rideId/end', (req, res) => {
     if (!pendingCommands[ride.scooter_id]) pendingCommands[ride.scooter_id] = [];
     pendingCommands[ride.scooter_id].push('brake_on');
 
-    db.audit('ride_end', `Ride ${ride.id} ended on ${ride.scooter_id}, cost: ${cost.toFixed(2)}`, 'system');
-    console.log(`[RIDE] Ended: ${ride.scooter_id}, duration: ${durationMin.toFixed(1)}min, cost: $${cost.toFixed(2)}`);
+    db.audit('ride_end', `Ride ${ride.id} on ${ride.scooter_id}, billed: ${billing.billableMin.toFixed(1)}min (paused: ${billing.pausedMin.toFixed(1)}min), cost: $${billing.cost}`, 'system');
+    console.log(`[RIDE] Ended: ${ride.scooter_id}, billed: ${billing.billableMin.toFixed(1)}min, paused: ${billing.pausedMin.toFixed(1)}min, cost: $${billing.cost}`);
 
     res.json({
       ok: true,
       summary: {
-        durationMin: Math.round(durationMin * 10) / 10,
-        cost: finalCost,
+        billableMin: Math.round(billing.billableMin * 10) / 10,
+        pausedMin: Math.round(billing.pausedMin * 10) / 10,
+        cost: billing.cost,
         startBattery: ride.start_battery,
         endBattery: live.battery || 0,
         scooterId: ride.scooter_id,
@@ -422,24 +491,8 @@ app.post('/api/admin/ride/:rideId/end', adminAuth, (req, res) => {
 
   const live = fleet[ride.scooter_id] || {};
   const pricing = db.getPricing();
-  const durationMin = (Date.now() - ride.start_time) / 60000;
-  const cost = pricing.base_fee + (pricing.rate_per_minute * durationMin);
 
-  db.endRide(ride.id, {
-    endBattery: live.battery || 0,
-    durationMin: Math.round(durationMin * 10) / 10,
-    distanceMiles: 0,
-    maxSpeedMph: live.speed || 0,
-    cost: Math.round(cost * 100) / 100
-  });
-
-  db.setScooterStatus(ride.scooter_id, 'available');
-  db.updateRiderStatus(ride.rider_id, 'registered');
-
-  if (!pendingCommands[ride.scooter_id]) pendingCommands[ride.scooter_id] = [];
-  pendingCommands[ride.scooter_id].push('brake_on');
-
-  db.audit('ride_force_end', `Admin ended ride ${ride.id} on ${ride.scooter_id}`, 'admin');
+  autoEndRide(ride, live, pricing, 'admin force-end');
   res.json({ ok: true });
 });
 

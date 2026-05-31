@@ -1,229 +1,209 @@
 // ==========================================
-// DATABASE MODULE — SQLite via better-sqlite3
+// DATABASE MODULE — JSON file persistence
+// No native dependencies — works on any platform
 // ==========================================
-const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 
-// Ensure data directory exists
+// Ensure directories exist
 const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
-
-// Ensure upload directories exist
 const uploadsDir = path.join(__dirname, 'uploads');
 ['id_photos', 'selfies'].forEach(sub => {
   const dir = path.join(uploadsDir, sub);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-const db = new Database(path.join(dataDir, 'fleet.db'));
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
-
 // ==========================================
-// SCHEMA
+// JSON STORE
 // ==========================================
-db.exec(`
-  CREATE TABLE IF NOT EXISTS scooters (
-    id          TEXT PRIMARY KEY,
-    name        TEXT DEFAULT '',
-    notes       TEXT DEFAULT '',
-    status      TEXT DEFAULT 'available',
-    speed_limit TEXT DEFAULT NULL,
-    created_at  INTEGER DEFAULT (strftime('%s','now') * 1000),
-    updated_at  INTEGER DEFAULT (strftime('%s','now') * 1000)
-  );
+const DB_PATH = path.join(dataDir, 'fleet.json');
 
-  CREATE TABLE IF NOT EXISTS riders (
-    id              TEXT PRIMARY KEY,
-    phone           TEXT NOT NULL,
-    email           TEXT NOT NULL,
-    full_name       TEXT NOT NULL,
-    national_id     TEXT NOT NULL,
-    id_photo_path   TEXT DEFAULT NULL,
-    selfie_path     TEXT DEFAULT NULL,
-    kyc_status      TEXT DEFAULT 'pending',
-    payment_status  TEXT DEFAULT 'unpaid',
-    balance         REAL DEFAULT 0,
-    status          TEXT DEFAULT 'registered',
-    created_at      INTEGER DEFAULT (strftime('%s','now') * 1000),
-    updated_at      INTEGER DEFAULT (strftime('%s','now') * 1000)
-  );
-
-  CREATE TABLE IF NOT EXISTS rides (
-    id              TEXT PRIMARY KEY,
-    rider_id        TEXT NOT NULL REFERENCES riders(id),
-    scooter_id      TEXT NOT NULL,
-    start_time      INTEGER NOT NULL,
-    end_time        INTEGER DEFAULT NULL,
-    duration_min    REAL DEFAULT 0,
-    paused_min      REAL DEFAULT 0,
-    last_poll       INTEGER DEFAULT NULL,
-    distance_miles  REAL DEFAULT 0,
-    max_speed_mph   REAL DEFAULT 0,
-    start_battery   REAL DEFAULT 0,
-    end_battery     REAL DEFAULT NULL,
-    cost            REAL DEFAULT 0,
-    status          TEXT DEFAULT 'active',
-    created_at      INTEGER DEFAULT (strftime('%s','now') * 1000)
-  );
-
-  CREATE TABLE IF NOT EXISTS payments (
-    id          TEXT PRIMARY KEY,
-    rider_id    TEXT NOT NULL REFERENCES riders(id),
-    ride_id     TEXT DEFAULT NULL,
-    amount      REAL NOT NULL,
-    currency    TEXT DEFAULT 'USD',
-    method      TEXT DEFAULT 'manual',
-    status      TEXT DEFAULT 'pending',
-    approved_by TEXT DEFAULT NULL,
-    approved_at INTEGER DEFAULT NULL,
-    notes       TEXT DEFAULT '',
-    created_at  INTEGER DEFAULT (strftime('%s','now') * 1000)
-  );
-
-  CREATE TABLE IF NOT EXISTS pricing (
-    id              INTEGER PRIMARY KEY CHECK (id = 1),
-    rate_per_minute REAL DEFAULT 0.25,
-    base_fee        REAL DEFAULT 1.00,
-    currency        TEXT DEFAULT 'USD',
-    updated_at      INTEGER DEFAULT (strftime('%s','now') * 1000)
-  );
-
-  CREATE TABLE IF NOT EXISTS audit_log (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    action     TEXT NOT NULL,
-    details    TEXT DEFAULT '',
-    user       TEXT DEFAULT 'system',
-    created_at INTEGER DEFAULT (strftime('%s','now') * 1000)
-  );
-
-  -- Seed pricing if empty
-  INSERT OR IGNORE INTO pricing (id) VALUES (1);
-`);
-
-// Migrations: add columns if missing (for existing databases)
-try { db.exec(`ALTER TABLE riders ADD COLUMN balance REAL DEFAULT 0`); } catch(e) {}
-try { db.exec(`ALTER TABLE rides ADD COLUMN paused_min REAL DEFAULT 0`); } catch(e) {}
-try { db.exec(`ALTER TABLE rides ADD COLUMN last_poll INTEGER DEFAULT NULL`); } catch(e) {}
-
-// ==========================================
-// SCOOTER HELPERS
-// ==========================================
-const stmts = {
-  ensureScooter: db.prepare(`INSERT OR IGNORE INTO scooters (id) VALUES (?)`),
-  getScooter: db.prepare(`SELECT * FROM scooters WHERE id = ?`),
-  getAllScooters: db.prepare(`SELECT * FROM scooters ORDER BY id`),
-  updateScooter: db.prepare(`UPDATE scooters SET name=?, notes=?, status=?, speed_limit=?, updated_at=? WHERE id=?`),
-  setScooterStatus: db.prepare(`UPDATE scooters SET status=?, updated_at=? WHERE id=?`),
-
-  // RIDER HELPERS
-  createRider: db.prepare(`INSERT INTO riders (id, phone, email, full_name, national_id, id_photo_path, selfie_path) VALUES (?,?,?,?,?,?,?)`),
-  getRider: db.prepare(`SELECT * FROM riders WHERE id = ?`),
-  getRiderByPhone: db.prepare(`SELECT * FROM riders WHERE phone = ?`),
-  getAllRiders: db.prepare(`SELECT * FROM riders ORDER BY created_at DESC`),
-  getRidersByKyc: db.prepare(`SELECT * FROM riders WHERE kyc_status = ? ORDER BY created_at DESC`),
-  getRidersByPayment: db.prepare(`SELECT * FROM riders WHERE payment_status = ? ORDER BY created_at DESC`),
-  updateKyc: db.prepare(`UPDATE riders SET kyc_status=?, updated_at=? WHERE id=?`),
-  updatePayment: db.prepare(`UPDATE riders SET payment_status=?, updated_at=? WHERE id=?`),
-  updateRiderStatus: db.prepare(`UPDATE riders SET status=?, updated_at=? WHERE id=?`),
-  addBalance: db.prepare(`UPDATE riders SET balance = balance + ?, payment_status = 'paid', updated_at=? WHERE id=?`),
-  deductBalance: db.prepare(`UPDATE riders SET balance = MAX(0, balance - ?), updated_at=? WHERE id=?`),
-
-  // RIDE HELPERS
-  createRide: db.prepare(`INSERT INTO rides (id, rider_id, scooter_id, start_time, start_battery) VALUES (?,?,?,?,?)`),
-  getRide: db.prepare(`SELECT * FROM rides WHERE id = ?`),
-  getActiveRideByRider: db.prepare(`SELECT * FROM rides WHERE rider_id = ? AND status = 'active' LIMIT 1`),
-  getActiveRideByScooter: db.prepare(`SELECT * FROM rides WHERE scooter_id = ? AND status = 'active' LIMIT 1`),
-  getAllActiveRides: db.prepare(`SELECT r.*, rd.full_name AS rider_name, rd.phone AS rider_phone FROM rides r JOIN riders rd ON r.rider_id = rd.id WHERE r.status = 'active' ORDER BY r.start_time DESC`),
-  updateRidePause: db.prepare(`UPDATE rides SET paused_min = paused_min + ?, last_poll = ? WHERE id = ?`),
-  updateRideLastPoll: db.prepare(`UPDATE rides SET last_poll = ? WHERE id = ?`),
-  endRide: db.prepare(`UPDATE rides SET end_time=?, duration_min=?, paused_min=?, distance_miles=?, max_speed_mph=?, end_battery=?, cost=?, status='completed' WHERE id=?`),
-  getCompletedRides: db.prepare(`SELECT r.*, rd.full_name AS rider_name, rd.phone AS rider_phone FROM rides r JOIN riders rd ON r.rider_id = rd.id WHERE r.status = 'completed' ORDER BY r.end_time DESC LIMIT ?`),
-  getRidesByRider: db.prepare(`SELECT * FROM rides WHERE rider_id = ? ORDER BY start_time DESC`),
-
-  // PAYMENT HELPERS
-  createPayment: db.prepare(`INSERT INTO payments (id, rider_id, amount, currency, method, status, approved_by, approved_at, notes) VALUES (?,?,?,?,?,?,?,?,?)`),
-  getPaymentsByRider: db.prepare(`SELECT * FROM payments WHERE rider_id = ? ORDER BY created_at DESC`),
-
-  // PRICING HELPERS
-  getPricing: db.prepare(`SELECT * FROM pricing WHERE id = 1`),
-  updatePricing: db.prepare(`UPDATE pricing SET rate_per_minute=?, base_fee=?, currency=?, updated_at=? WHERE id=1`),
-
-  // AUDIT LOG HELPERS
-  addAudit: db.prepare(`INSERT INTO audit_log (action, details, user) VALUES (?,?,?)`),
-  getAuditLog: db.prepare(`SELECT * FROM audit_log ORDER BY created_at DESC LIMIT ?`),
+const DEFAULTS = {
+  scooters: {},
+  riders: {},
+  rides: {},
+  payments: {},
+  pricing: { rate_per_minute: 0.25, base_fee: 1.00, currency: 'USD' },
+  audit_log: []
 };
 
+let store = loadStore();
+
+function loadStore() {
+  try {
+    if (fs.existsSync(DB_PATH)) {
+      const raw = fs.readFileSync(DB_PATH, 'utf8');
+      const data = JSON.parse(raw);
+      // Merge with defaults for any missing keys
+      return { ...DEFAULTS, ...data };
+    }
+  } catch (e) {
+    console.error('[DB] Failed to load, starting fresh:', e.message);
+  }
+  return JSON.parse(JSON.stringify(DEFAULTS));
+}
+
+function save() {
+  try {
+    fs.writeFileSync(DB_PATH, JSON.stringify(store, null, 2), 'utf8');
+  } catch (e) {
+    console.error('[DB] Save error:', e.message);
+  }
+}
+
+// Debounced save — batches rapid writes
+let saveTimer = null;
+function debouncedSave() {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(save, 200);
+}
+
 // ==========================================
-// EXPORTED API
+// EXPORTED API (same interface as SQLite version)
 // ==========================================
 module.exports = {
-  raw: db,
 
-  // Scooters
-  ensureScooter(id)  { return stmts.ensureScooter.run(id); },
-  getScooter(id)     { return stmts.getScooter.get(id); },
-  getAllScooters()    { return stmts.getAllScooters.all(); },
-  updateScooter(id, { name, notes, status, speedLimit }) {
-    return stmts.updateScooter.run(name || '', notes || '', status || 'available', speedLimit || null, Date.now(), id);
+  // ── Scooters ──
+  ensureScooter(id) {
+    if (!store.scooters[id]) {
+      store.scooters[id] = { id, name: '', notes: '', status: 'available', speed_limit: null, created_at: Date.now(), updated_at: Date.now() };
+      debouncedSave();
+    }
   },
-  setScooterStatus(id, status) { return stmts.setScooterStatus.run(status, Date.now(), id); },
+  getScooter(id) { return store.scooters[id] || null; },
+  getAllScooters() { return Object.values(store.scooters).sort((a, b) => (a.id > b.id ? 1 : -1)); },
+  updateScooter(id, { name, notes, status, speedLimit }) {
+    this.ensureScooter(id);
+    Object.assign(store.scooters[id], { name: name || '', notes: notes || '', status: status || 'available', speed_limit: speedLimit || null, updated_at: Date.now() });
+    debouncedSave();
+  },
+  setScooterStatus(id, status) {
+    if (store.scooters[id]) { store.scooters[id].status = status; store.scooters[id].updated_at = Date.now(); debouncedSave(); }
+  },
 
-  // Riders
+  // ── Riders ──
   createRider({ phone, email, fullName, nationalId, idPhotoPath, selfiePath }) {
     const id = uuidv4();
-    stmts.createRider.run(id, phone, email, fullName, nationalId, idPhotoPath || null, selfiePath || null);
+    store.riders[id] = {
+      id, phone, email, full_name: fullName, national_id: nationalId,
+      id_photo_path: idPhotoPath || null, selfie_path: selfiePath || null,
+      kyc_status: 'pending', payment_status: 'unpaid', balance: 0,
+      status: 'registered', created_at: Date.now(), updated_at: Date.now()
+    };
+    debouncedSave();
     return id;
   },
-  getRider(id)           { return stmts.getRider.get(id); },
-  getRiderByPhone(phone) { return stmts.getRiderByPhone.get(phone); },
-  getAllRiders()          { return stmts.getAllRiders.all(); },
-  getRidersByKyc(status) { return stmts.getRidersByKyc.all(status); },
-  getRidersByPayment(st) { return stmts.getRidersByPayment.all(st); },
-  updateKyc(id, status)  { return stmts.updateKyc.run(status, Date.now(), id); },
-  updatePayment(id, st)  { return stmts.updatePayment.run(st, Date.now(), id); },
-  updateRiderStatus(id, st) { return stmts.updateRiderStatus.run(st, Date.now(), id); },
-  addBalance(id, amount) { return stmts.addBalance.run(amount, Date.now(), id); },
-  deductBalance(id, amount) { return stmts.deductBalance.run(amount, Date.now(), id); },
+  getRider(id) { return store.riders[id] || null; },
+  getRiderByPhone(phone) { return Object.values(store.riders).find(r => r.phone === phone) || null; },
+  getAllRiders() { return Object.values(store.riders).sort((a, b) => b.created_at - a.created_at); },
+  getRidersByKyc(status) { return Object.values(store.riders).filter(r => r.kyc_status === status).sort((a, b) => b.created_at - a.created_at); },
+  getRidersByPayment(st) { return Object.values(store.riders).filter(r => r.payment_status === st).sort((a, b) => b.created_at - a.created_at); },
+  updateKyc(id, status) { if (store.riders[id]) { store.riders[id].kyc_status = status; store.riders[id].updated_at = Date.now(); debouncedSave(); } },
+  updatePayment(id, st) { if (store.riders[id]) { store.riders[id].payment_status = st; store.riders[id].updated_at = Date.now(); debouncedSave(); } },
+  updateRiderStatus(id, st) { if (store.riders[id]) { store.riders[id].status = st; store.riders[id].updated_at = Date.now(); debouncedSave(); } },
+  addBalance(id, amount) {
+    if (store.riders[id]) {
+      store.riders[id].balance = (store.riders[id].balance || 0) + amount;
+      store.riders[id].payment_status = 'paid';
+      store.riders[id].updated_at = Date.now();
+      debouncedSave();
+    }
+  },
+  deductBalance(id, amount) {
+    if (store.riders[id]) {
+      store.riders[id].balance = Math.max(0, (store.riders[id].balance || 0) - amount);
+      store.riders[id].updated_at = Date.now();
+      debouncedSave();
+    }
+  },
 
-  // Rides
+  // ── Rides ──
   createRide({ riderId, scooterId, startBattery }) {
     const id = uuidv4();
-    stmts.createRide.run(id, riderId, scooterId, Date.now(), startBattery || 0);
+    store.rides[id] = {
+      id, rider_id: riderId, scooter_id: scooterId,
+      start_time: Date.now(), end_time: null,
+      duration_min: 0, paused_min: 0, last_poll: null,
+      distance_miles: 0, max_speed_mph: 0,
+      start_battery: startBattery || 0, end_battery: null,
+      cost: 0, status: 'active', created_at: Date.now()
+    };
+    debouncedSave();
     return id;
   },
-  getRide(id)                  { return stmts.getRide.get(id); },
-  getActiveRideByRider(rid)    { return stmts.getActiveRideByRider.get(rid); },
-  getActiveRideByScooter(sid)  { return stmts.getActiveRideByScooter.get(sid); },
-  getAllActiveRides()           { return stmts.getAllActiveRides.all(); },
-  endRide(id, { endBattery, durationMin, pausedMin, distanceMiles, maxSpeedMph, cost }) {
-    return stmts.endRide.run(Date.now(), durationMin || 0, pausedMin || 0, distanceMiles || 0, maxSpeedMph || 0, endBattery || 0, cost || 0, id);
+  getRide(id) { return store.rides[id] || null; },
+  getActiveRideByRider(rid) { return Object.values(store.rides).find(r => r.rider_id === rid && r.status === 'active') || null; },
+  getActiveRideByScooter(sid) { return Object.values(store.rides).find(r => r.scooter_id === sid && r.status === 'active') || null; },
+  getAllActiveRides() {
+    return Object.values(store.rides)
+      .filter(r => r.status === 'active')
+      .map(r => ({ ...r, rider_name: store.riders[r.rider_id]?.full_name || '—', rider_phone: store.riders[r.rider_id]?.phone || '' }))
+      .sort((a, b) => b.start_time - a.start_time);
   },
-  addPausedTime(id, minutes) { return stmts.updateRidePause.run(minutes, Date.now(), id); },
-  updateLastPoll(id) { return stmts.updateRideLastPoll.run(Date.now(), id); },
-  getCompletedRides(limit = 50) { return stmts.getCompletedRides.all(limit); },
-  getRidesByRider(rid)          { return stmts.getRidesByRider.all(rid); },
+  endRide(id, { endBattery, durationMin, pausedMin, distanceMiles, maxSpeedMph, cost }) {
+    if (store.rides[id]) {
+      Object.assign(store.rides[id], {
+        end_time: Date.now(), duration_min: durationMin || 0, paused_min: pausedMin || 0,
+        distance_miles: distanceMiles || 0, max_speed_mph: maxSpeedMph || 0,
+        end_battery: endBattery || 0, cost: cost || 0, status: 'completed'
+      });
+      debouncedSave();
+    }
+  },
+  addPausedTime(id, minutes) {
+    if (store.rides[id]) {
+      store.rides[id].paused_min = (store.rides[id].paused_min || 0) + minutes;
+      store.rides[id].last_poll = Date.now();
+      debouncedSave();
+    }
+  },
+  updateLastPoll(id) {
+    if (store.rides[id]) { store.rides[id].last_poll = Date.now(); }
+    // No save needed — last_poll is transient
+  },
+  getCompletedRides(limit = 50) {
+    return Object.values(store.rides)
+      .filter(r => r.status === 'completed')
+      .map(r => ({ ...r, rider_name: store.riders[r.rider_id]?.full_name || '—', rider_phone: store.riders[r.rider_id]?.phone || '' }))
+      .sort((a, b) => b.end_time - a.end_time)
+      .slice(0, limit);
+  },
+  getRidesByRider(rid) { return Object.values(store.rides).filter(r => r.rider_id === rid).sort((a, b) => b.start_time - a.start_time); },
 
-  // Payments
+  // ── Payments ──
   createPayment({ riderId, amount, currency, method, status, approvedBy, notes }) {
     const id = uuidv4();
-    stmts.createPayment.run(id, riderId, amount, currency || 'USD', method || 'manual', status || 'pending', approvedBy || null, status === 'approved' ? Date.now() : null, notes || '');
+    store.payments[id] = {
+      id, rider_id: riderId, ride_id: null, amount,
+      currency: currency || 'USD', method: method || 'manual',
+      status: status || 'pending', approved_by: approvedBy || null,
+      approved_at: status === 'approved' ? Date.now() : null,
+      notes: notes || '', created_at: Date.now()
+    };
+    debouncedSave();
     return id;
   },
-  getPaymentsByRider(rid) { return stmts.getPaymentsByRider.all(rid); },
+  getPaymentsByRider(rid) { return Object.values(store.payments).filter(p => p.rider_id === rid).sort((a, b) => b.created_at - a.created_at); },
 
-  // Pricing
-  getPricing()  { return stmts.getPricing.get(); },
+  // ── Pricing ──
+  getPricing() { return store.pricing; },
   updatePricing({ ratePerMinute, baseFee, currency }) {
-    return stmts.updatePricing.run(ratePerMinute, baseFee, currency || 'USD', Date.now());
+    store.pricing = { rate_per_minute: ratePerMinute, base_fee: baseFee, currency: currency || 'USD', updated_at: Date.now() };
+    debouncedSave();
   },
 
-  // Audit
-  audit(action, details, user = 'system') { return stmts.addAudit.run(action, details, user); },
-  getAuditLog(limit = 100) { return stmts.getAuditLog.all(limit); },
+  // ── Audit Log ──
+  audit(action, details, user = 'system') {
+    store.audit_log.unshift({ id: store.audit_log.length + 1, action, details, user, created_at: Date.now() });
+    if (store.audit_log.length > 500) store.audit_log = store.audit_log.slice(0, 500);
+    debouncedSave();
+  },
+  getAuditLog(limit = 100) { return store.audit_log.slice(0, limit); },
 
   // Utility
   uuid: uuidv4,
 };
+
+console.log('[DB] JSON store loaded from', DB_PATH);

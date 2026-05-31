@@ -2,9 +2,9 @@
   "name": "scooter-fleet-server",
   "version": "1.0.0",
   "description": "Centralized server for managing a fleet of ESP32-powered scooters.",
-  "main": "server.js",
+  "main": "server_cloud.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server_cloud.js"
   },
   "dependencies": {
     "express": "^4.18.2"

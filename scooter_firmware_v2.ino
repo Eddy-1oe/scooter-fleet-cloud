@@ -438,6 +438,13 @@ void pushTelemetry() {
   Serial.print("[PUSH] URL: ");
   Serial.println(url);
 
+  Serial.print("[PUSH] Scooter valid: ");
+  Serial.println(scooter.valid);
+  Serial.print("[PUSH] Battery: ");
+  Serial.println(scooter.battery);
+  Serial.print("[PUSH] Voltage: ");
+  Serial.println(scooter.voltage);
+
   WiFiClientSecure secure;
   HTTPClient http;
   httpBegin(http, secure, url);

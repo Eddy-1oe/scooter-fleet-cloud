@@ -1,8 +1,15 @@
-const express = require('express');
-const multer = require('multer');
-const path = require('path');
-const QRCode = require('qrcode');
-const db = require('./db');
+let express, multer, path, QRCode, db;
+try {
+  express = require('express');
+  multer = require('multer');
+  path = require('path');
+  QRCode = require('qrcode');
+  db = require('./db');
+} catch (e) {
+  console.error('[FATAL] Module load failed:', e.message);
+  console.error(e.stack);
+  process.exit(1);
+}
 const app = express();
 
 const PORT = 3000;

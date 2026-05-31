@@ -403,7 +403,23 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
       </div>
     </div>
     <div class="nav-section">
-      <div class="nav-label">Phase 3 (GPS)</div>
+      <div class="nav-label">Rider Management</div>
+      <div class="nav-item" data-page="riders" onclick="goTo('riders')">
+        <i class="ti ti-user-check"></i> Rider Approvals
+        <span class="nav-badge" id="nav-rider-badge" style="display:none">0</span>
+      </div>
+      <div class="nav-item" data-page="active-rides" onclick="goTo('active-rides')">
+        <i class="ti ti-activity"></i> Active Rides
+      </div>
+      <div class="nav-item" data-page="ride-history" onclick="goTo('ride-history')">
+        <i class="ti ti-history"></i> Ride History
+      </div>
+      <div class="nav-item" data-page="qrcodes" onclick="goTo('qrcodes')">
+        <i class="ti ti-qrcode"></i> QR Codes
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">GPS</div>
       <div class="nav-item" data-page="map" onclick="goTo('map')">
         <i class="ti ti-map"></i> Live Map
       </div>
@@ -806,6 +822,90 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
       </div>
     </div>
 
+    <!-- ── PAGE: Rider Approvals ── -->
+    <div class="page" id="page-riders">
+      <div class="page-hd">
+        <div>
+          <div class="page-title">Rider Approvals</div>
+          <div class="page-sub">Review KYC submissions and manage payments</div>
+        </div>
+      </div>
+      <div class="stat-row" style="grid-template-columns:repeat(4,1fr)">
+        <div class="stat amber"><div class="stat-label"><i class="ti ti-clock" style="font-size:13px"></i> Pending KYC</div><div class="stat-val" id="riders-pending-kyc">—</div></div>
+        <div class="stat blue"><div class="stat-label"><i class="ti ti-credit-card" style="font-size:13px"></i> Pending Payment</div><div class="stat-val" id="riders-pending-pay">—</div></div>
+        <div class="stat green"><div class="stat-label"><i class="ti ti-user-check" style="font-size:13px"></i> Active</div><div class="stat-val" id="riders-active">—</div></div>
+        <div class="stat blue"><div class="stat-label"><i class="ti ti-users" style="font-size:13px"></i> Total</div><div class="stat-val" id="riders-total">—</div></div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><span class="card-title"><i class="ti ti-shield-check"></i> Pending KYC Review</span></div>
+        <div id="pending-kyc-list" style="padding:0 20px"><div class="alerts-empty">No pending KYC reviews</div></div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><span class="card-title"><i class="ti ti-credit-card"></i> Pending Payment</span></div>
+        <div id="pending-pay-list" style="padding:0 20px"><div class="alerts-empty">No pending payments</div></div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><span class="card-title"><i class="ti ti-list"></i> All Riders</span></div>
+        <div id="all-riders-list" style="padding:0 20px"><div class="alerts-empty">No riders registered yet</div></div>
+      </div>
+    </div>
+
+    <!-- ── PAGE: Active Rides ── -->
+    <div class="page" id="page-active-rides">
+      <div class="page-hd">
+        <div>
+          <div class="page-title">Active Rides</div>
+          <div class="page-sub">Live monitoring of in-progress rides</div>
+        </div>
+      </div>
+      <div class="stat-row" style="grid-template-columns:repeat(3,1fr)">
+        <div class="stat green"><div class="stat-label"><i class="ti ti-bolt" style="font-size:13px"></i> Active now</div><div class="stat-val" id="active-rides-count">—</div></div>
+        <div class="stat amber"><div class="stat-label"><i class="ti ti-clock" style="font-size:13px"></i> Avg duration</div><div class="stat-val" id="active-rides-avg">—</div></div>
+        <div class="stat blue"><div class="stat-label"><i class="ti ti-currency-dollar" style="font-size:13px"></i> Revenue est.</div><div class="stat-val" id="active-rides-rev">—</div></div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><span class="card-title"><i class="ti ti-activity"></i> In-progress rides</span></div>
+        <div id="active-rides-table" style="padding:0 20px"><div class="alerts-empty">No active rides</div></div>
+      </div>
+    </div>
+
+    <!-- ── PAGE: Ride History ── -->
+    <div class="page" id="page-ride-history">
+      <div class="page-hd">
+        <div>
+          <div class="page-title">Ride History</div>
+          <div class="page-sub">Completed rides and revenue tracking</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><span class="card-title"><i class="ti ti-history"></i> Completed rides</span></div>
+        <div id="ride-history-table" style="padding:0 20px"><div class="alerts-empty">No completed rides yet</div></div>
+      </div>
+    </div>
+
+    <!-- ── PAGE: QR Codes ── -->
+    <div class="page" id="page-qrcodes">
+      <div class="page-hd">
+        <div>
+          <div class="page-title">QR Codes</div>
+          <div class="page-sub">Generate and download QR codes for riders to scan</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><span class="card-title"><i class="ti ti-qrcode"></i> Fleet-wide QR Code</span></div>
+        <div class="card-body" style="text-align:center">
+          <div id="fleet-qr" style="margin-bottom:12px"><div class="alerts-empty">Click Generate to create QR code</div></div>
+          <button class="btn btn-primary" onclick="generateFleetQR()" style="width:auto;display:inline-flex;padding:10px 24px"><i class="ti ti-qrcode"></i> Generate Fleet QR</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><span class="card-title"><i class="ti ti-list"></i> Per-Scooter QR Codes</span></div>
+        <div id="scooter-qr-grid" style="padding:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
+          <div class="alerts-empty" style="grid-column:1/-1">No scooters registered. Scooters auto-register when they connect.</div>
+        </div>
+      </div>
+    </div>
+
     <!-- ── PAGE: Live Map ── -->
     <div class="page" id="page-map">
       <div class="page-hd">
@@ -1033,6 +1133,10 @@ function goTo(page) {
   if(page === 'battery') renderBatteryPage();
   if(page === 'analytics') renderAnalyticsPage();
   if(page === 'registry') renderRegistryPage();
+  if(page === 'riders') renderRidersPage();
+  if(page === 'active-rides') renderActiveRidesPage();
+  if(page === 'ride-history') renderRideHistoryPage();
+  if(page === 'qrcodes') renderQRPage();
   if(page === 'map') renderMapPage();
 }
 
@@ -2443,6 +2547,210 @@ initPhase2Data();
 initChart();
 renderFleet(fleetData);
 // Don't start polling until user logs in
+
+// ── Rider Management (server-backed) ──
+const ADMIN_HEADERS = { 'Content-Type': 'application/json', 'X-Admin-Token': 'admin123' };
+
+async function renderRidersPage() {
+  try {
+    const res = await fetch(SERVER + '/api/admin/riders', { headers: ADMIN_HEADERS });
+    const riders = await res.json();
+
+    const pendingKyc = riders.filter(r => r.kyc_status === 'pending');
+    const pendingPay = riders.filter(r => r.kyc_status === 'approved' && r.payment_status === 'unpaid');
+    const active = riders.filter(r => r.activeRide);
+
+    document.getElementById('riders-pending-kyc').textContent = pendingKyc.length;
+    document.getElementById('riders-pending-pay').textContent = pendingPay.length;
+    document.getElementById('riders-active').textContent = active.length;
+    document.getElementById('riders-total').textContent = riders.length;
+
+    // Badge
+    const badge = document.getElementById('nav-rider-badge');
+    const pending = pendingKyc.length + pendingPay.length;
+    if (pending > 0) { badge.textContent = pending; badge.style.display = ''; } else { badge.style.display = 'none'; }
+
+    // Pending KYC
+    const kycEl = document.getElementById('pending-kyc-list');
+    if (pendingKyc.length === 0) {
+      kycEl.innerHTML = '<div class="alerts-empty">No pending KYC reviews</div>';
+    } else {
+      kycEl.innerHTML = pendingKyc.map(r => `
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--border)">
+          <div style="width:40px;height:40px;border-radius:10px;background:var(--navy-3);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            ${r.selfie_path ? `<img src="${SERVER}/api/admin/rider-photo/${r.id}/selfie" style="width:40px;height:40px;border-radius:10px;object-fit:cover" onerror="this.outerHTML='<i class=\\'ti ti-user\\' style=\\'color:var(--text-tertiary)\\'></i>'">` : '<i class="ti ti-user" style="color:var(--text-tertiary)"></i>'}
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600">${r.full_name}</div>
+            <div style="font-size:11px;color:var(--text-secondary)">${r.phone} &middot; ${r.email}</div>
+            <div style="font-size:11px;color:var(--text-tertiary);font-family:var(--mono)">ID: ${r.national_id}</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            ${r.id_photo_path ? `<a href="${SERVER}/api/admin/rider-photo/${r.id}/id_photo" target="_blank" class="btn btn-ghost" style="padding:6px 10px;font-size:11px;width:auto"><i class="ti ti-id"></i></a>` : ''}
+            <button class="btn btn-success" onclick="approveKyc('${r.id}')" style="padding:6px 12px;font-size:11px;width:auto"><i class="ti ti-check"></i> Approve</button>
+            <button class="btn btn-danger" onclick="rejectKyc('${r.id}')" style="padding:6px 12px;font-size:11px;width:auto"><i class="ti ti-x"></i></button>
+          </div>
+        </div>`).join('');
+    }
+
+    // Pending Payment
+    const payEl = document.getElementById('pending-pay-list');
+    if (pendingPay.length === 0) {
+      payEl.innerHTML = '<div class="alerts-empty">No pending payments</div>';
+    } else {
+      payEl.innerHTML = pendingPay.map(r => `
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--border)">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600">${r.full_name}</div>
+            <div style="font-size:11px;color:var(--text-secondary)">${r.phone}</div>
+          </div>
+          <button class="btn btn-success" onclick="markPaid('${r.id}')" style="padding:6px 14px;font-size:12px;width:auto"><i class="ti ti-check"></i> Mark Paid</button>
+        </div>`).join('');
+    }
+
+    // All riders
+    const allEl = document.getElementById('all-riders-list');
+    if (riders.length === 0) {
+      allEl.innerHTML = '<div class="alerts-empty">No riders registered yet</div>';
+    } else {
+      allEl.innerHTML = riders.map(r => {
+        const kycC = r.kyc_status === 'approved' ? 'color:var(--green)' : r.kyc_status === 'rejected' ? 'color:var(--red)' : 'color:var(--amber)';
+        const payC = r.payment_status === 'paid' ? 'color:var(--green)' : 'color:var(--amber)';
+        return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600">${r.full_name}</div>
+            <div style="font-size:11px;color:var(--text-secondary)">${r.phone} &middot; ${r.email}</div>
+          </div>
+          <span style="font-size:10px;font-weight:600;${kycC}">${r.kyc_status.toUpperCase()}</span>
+          <span style="font-size:10px;font-weight:600;${payC}">${r.payment_status.toUpperCase()}</span>
+          ${r.activeRide ? '<span style="font-size:10px;font-weight:600;color:var(--green)">RIDING</span>' : ''}
+        </div>`;
+      }).join('');
+    }
+  } catch (err) { console.error('Riders page error:', err); }
+}
+
+async function approveKyc(riderId) {
+  await fetch(SERVER + '/api/admin/rider/' + riderId + '/kyc', { method: 'PUT', headers: ADMIN_HEADERS, body: JSON.stringify({ status: 'approved' }) });
+  renderRidersPage();
+}
+
+async function rejectKyc(riderId) {
+  await fetch(SERVER + '/api/admin/rider/' + riderId + '/kyc', { method: 'PUT', headers: ADMIN_HEADERS, body: JSON.stringify({ status: 'rejected' }) });
+  renderRidersPage();
+}
+
+async function markPaid(riderId) {
+  const amount = prompt('Enter payment amount:');
+  if (!amount) return;
+  await fetch(SERVER + '/api/admin/rider/' + riderId + '/payment', {
+    method: 'PUT', headers: ADMIN_HEADERS,
+    body: JSON.stringify({ status: 'paid', amount: parseFloat(amount), notes: 'Manual payment' })
+  });
+  renderRidersPage();
+}
+
+async function renderActiveRidesPage() {
+  try {
+    const res = await fetch(SERVER + '/api/admin/rides?status=active', { headers: ADMIN_HEADERS });
+    const rides = await res.json();
+
+    document.getElementById('active-rides-count').textContent = rides.length;
+
+    let totalDur = 0, totalRev = 0;
+    const pricing = await (await fetch(SERVER + '/api/admin/pricing', { headers: ADMIN_HEADERS })).json();
+
+    const el = document.getElementById('active-rides-table');
+    if (rides.length === 0) {
+      el.innerHTML = '<div class="alerts-empty">No active rides</div>';
+      document.getElementById('active-rides-avg').textContent = '—';
+      document.getElementById('active-rides-rev').textContent = '$0';
+      return;
+    }
+
+    el.innerHTML = rides.map(r => {
+      const dur = (Date.now() - r.start_time) / 60000;
+      const cost = pricing.base_fee + pricing.rate_per_minute * dur;
+      const live = fleetData[r.scooter_id] || {};
+      totalDur += dur; totalRev += cost;
+      return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${r.rider_name || '—'}</div>
+          <div style="font-size:11px;color:var(--text-secondary)">${r.scooter_id} &middot; ${dur.toFixed(0)} min &middot; $${cost.toFixed(2)}</div>
+        </div>
+        <span style="font-size:12px;font-family:var(--mono);color:var(--text-secondary)">${(live.speed||0).toFixed(0)} mph</span>
+        <span style="font-size:12px;font-family:var(--mono);color:${(live.battery||0)>50?'var(--green)':(live.battery||0)>20?'var(--amber)':'var(--red)'}">${(live.battery||0).toFixed(0)}%</span>
+        <button class="btn btn-danger" onclick="adminEndRide('${r.id}')" style="padding:6px 12px;font-size:11px;width:auto"><i class="ti ti-square-x"></i> End</button>
+      </div>`;
+    }).join('');
+
+    document.getElementById('active-rides-avg').textContent = (totalDur / rides.length).toFixed(0) + 'm';
+    document.getElementById('active-rides-rev').textContent = '$' + totalRev.toFixed(2);
+  } catch (err) { console.error('Active rides error:', err); }
+}
+
+async function adminEndRide(rideId) {
+  if (!confirm('Force end this ride?')) return;
+  await fetch(SERVER + '/api/admin/ride/' + rideId + '/end', { method: 'POST', headers: ADMIN_HEADERS });
+  renderActiveRidesPage();
+}
+
+async function renderRideHistoryPage() {
+  try {
+    const res = await fetch(SERVER + '/api/admin/rides', { headers: ADMIN_HEADERS });
+    const rides = await res.json();
+    const el = document.getElementById('ride-history-table');
+    if (rides.length === 0) { el.innerHTML = '<div class="alerts-empty">No completed rides yet</div>'; return; }
+    el.innerHTML = rides.map(r => {
+      const date = new Date(r.end_time || r.start_time).toLocaleString();
+      return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${r.rider_name || '—'}</div>
+          <div style="font-size:11px;color:var(--text-secondary)">${r.scooter_id} &middot; ${date}</div>
+        </div>
+        <span style="font-size:12px;font-family:var(--mono);color:var(--text-secondary)">${(r.duration_min||0).toFixed(1)} min</span>
+        <span style="font-size:12px;font-family:var(--mono);font-weight:600;color:var(--green)">$${(r.cost||0).toFixed(2)}</span>
+      </div>`;
+    }).join('');
+  } catch (err) { console.error('Ride history error:', err); }
+}
+
+async function generateFleetQR() {
+  try {
+    const res = await fetch(SERVER + '/api/admin/qr/fleet', { headers: ADMIN_HEADERS });
+    const data = await res.json();
+    document.getElementById('fleet-qr').innerHTML = `
+      <img src="${data.qr}" style="width:250px;height:250px;border-radius:12px;border:2px solid var(--border)">
+      <div style="font-size:12px;color:var(--text-secondary);margin-top:8px;font-family:var(--mono);word-break:break-all">${data.url}</div>
+      <a href="${data.qr}" download="fleet-qr.png" class="btn btn-ghost" style="width:auto;display:inline-flex;padding:8px 16px;font-size:12px;margin-top:8px"><i class="ti ti-download"></i> Download</a>`;
+  } catch (err) { console.error('Fleet QR error:', err); }
+}
+
+async function renderQRPage() {
+  generateFleetQR();
+  try {
+    const res = await fetch(SERVER + '/api/admin/scooters', { headers: ADMIN_HEADERS });
+    const scooters = await res.json();
+    const grid = document.getElementById('scooter-qr-grid');
+    if (scooters.length === 0) { grid.innerHTML = '<div class="alerts-empty" style="grid-column:1/-1">No scooters registered yet</div>'; return; }
+    grid.innerHTML = scooters.map(s => `
+      <div style="background:var(--navy-3);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;text-align:center">
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px">${s.id}</div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">${s.name || 'Unnamed'}</div>
+        <div id="qr-${s.id}" style="margin-bottom:8px"><button class="btn btn-ghost" onclick="genScooterQR('${s.id}')" style="font-size:11px;padding:8px"><i class="ti ti-qrcode"></i> Generate</button></div>
+      </div>`).join('');
+  } catch (err) { console.error('QR page error:', err); }
+}
+
+async function genScooterQR(scooterId) {
+  try {
+    const res = await fetch(SERVER + '/api/admin/qr/scooter/' + scooterId, { headers: ADMIN_HEADERS });
+    const data = await res.json();
+    document.getElementById('qr-' + scooterId).innerHTML = `
+      <img src="${data.qr}" style="width:140px;height:140px;border-radius:8px">
+      <div style="margin-top:6px"><a href="${data.qr}" download="qr-${scooterId}.png" style="font-size:10px;color:var(--accent)">Download</a></div>`;
+  } catch (err) { console.error('Scooter QR error:', err); }
+}
 
 // ── Phase 3: Map & GPS ──
 let map = null;

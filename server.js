@@ -346,8 +346,63 @@ app.get('/api/rider/:id/ride', (req, res) => {
     battery: billing.battery,
     speed: live.speed || 0,
     mode: live.mode || '—',
+    brake: live.brake || false,
+    light: live.light || false,
+    diag: live.diag || false,
+    locked: ride.locked || false,
     gps: live.gps || null
   });
+});
+
+// POST /api/rider/command — rider sends command to their scooter
+app.post('/api/rider/command', (req, res) => {
+  const { riderId, action } = req.body;
+  if (!riderId || !action) return res.status(400).json({ error: 'Missing riderId or action' });
+
+  const ride = db.getActiveRideByRider(riderId);
+  if (!ride) return res.status(404).json({ error: 'No active ride' });
+
+  // Check admin lock
+  if (ride.locked) return res.status(403).json({ error: 'Scooter is locked by admin', code: 'admin_locked' });
+
+  // Check balance — block commands if balance depleted
+  const rider = db.getRider(riderId);
+  const pricing = db.getPricing();
+  const billing = calcRideBilling(ride, fleet[ride.scooter_id] || {}, pricing);
+  if ((rider?.balance || 0) <= billing.cost) {
+    return res.status(403).json({ error: 'Balance depleted', code: 'no_balance' });
+  }
+
+  // Allowed rider commands (no brake_on/brake_off — admin only for lock/unlock)
+  const allowed = ['mode', 'headlight', 'sidelight', 'walk', 'cruise', 'zerostart', 'alarm', 'alarmoff', 'metric'];
+  if (!allowed.includes(action)) return res.status(400).json({ error: 'Command not allowed' });
+
+  if (!pendingCommands[ride.scooter_id]) pendingCommands[ride.scooter_id] = [];
+  pendingCommands[ride.scooter_id].push(action);
+
+  console.log(`[RIDER CMD] ${riderId} -> ${ride.scooter_id}: ${action}`);
+  res.json({ ok: true });
+});
+
+// POST /api/admin/ride/:rideId/lock — admin locks/unlocks rider controls
+app.post('/api/admin/ride/:rideId/lock', adminAuth, (req, res) => {
+  const { locked } = req.body;
+  const ride = db.getRide(req.params.rideId);
+  if (!ride || ride.status !== 'active') return res.status(404).json({ error: 'Active ride not found' });
+
+  ride.locked = !!locked;
+  // Persist lock state in store
+  const storeRide = db.getRide(req.params.rideId);
+  if (storeRide) { storeRide.locked = !!locked; }
+
+  if (locked) {
+    // Also brake the scooter
+    if (!pendingCommands[ride.scooter_id]) pendingCommands[ride.scooter_id] = [];
+    pendingCommands[ride.scooter_id].push('brake_on');
+  }
+
+  db.audit('ride_lock', `Admin ${locked ? 'locked' : 'unlocked'} ride ${req.params.rideId}`, 'admin');
+  res.json({ ok: true, locked: !!locked });
 });
 
 // POST /api/ride/:rideId/end — end ride

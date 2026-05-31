@@ -2692,6 +2692,7 @@ async function renderActiveRidesPage() {
           <div style="font-size:10px;color:var(--text-tertiary)">$${remBal.toFixed(2)}</div>
         </div>
         <button class="btn btn-success" onclick="adminTopUp('${r.rider_id}')" style="padding:5px 10px;font-size:10px;width:auto"><i class="ti ti-plus"></i> Top up</button>
+        <button class="btn btn-amber" onclick="adminLockRide('${r.id}',${!r.locked})" style="padding:5px 10px;font-size:10px;width:auto"><i class="ti ti-${r.locked?'lock-open':'lock'}"></i> ${r.locked?'Unlock':'Lock'}</button>
         <button class="btn btn-danger" onclick="adminEndRide('${r.id}')" style="padding:5px 10px;font-size:10px;width:auto"><i class="ti ti-square-x"></i> End</button>
       </div>`;
     }).join('');
@@ -2699,6 +2700,14 @@ async function renderActiveRidesPage() {
     document.getElementById('active-rides-avg').textContent = (totalDur / rides.length).toFixed(0) + 'm';
     document.getElementById('active-rides-rev').textContent = '$' + totalRev.toFixed(2);
   } catch (err) { console.error('Active rides error:', err); }
+}
+
+async function adminLockRide(rideId, lock) {
+  await fetch(SERVER + '/api/admin/ride/' + rideId + '/lock', {
+    method: 'POST', headers: ADMIN_HEADERS,
+    body: JSON.stringify({ locked: lock })
+  });
+  renderActiveRidesPage();
 }
 
 async function adminTopUp(riderId) {

@@ -111,6 +111,20 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
 .waiting-dots::after{content:'';animation:dots 1.5s infinite}
 @keyframes dots{0%{content:''}33%{content:'.'}66%{content:'..'}100%{content:'...'}}
 
+/* Indicator pills */
+.ind{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;background:var(--navy-2);border:1px solid var(--border);color:var(--text-tertiary)}
+.ind.on{background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.25);color:var(--green)}
+.ind.warn{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.25);color:var(--amber)}
+.ind.danger{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.25);color:var(--red)}
+.ind i{font-size:13px}
+
+/* Rider control buttons */
+.rbtn{background:var(--navy-2);border:1px solid var(--border-light);border-radius:10px;padding:12px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:11px;font-weight:600;color:var(--text-secondary);transition:all .15s;font-family:var(--font)}
+.rbtn:hover{background:var(--navy-3);color:var(--text-primary);border-color:var(--accent)}
+.rbtn:active{transform:scale(.95)}
+.rbtn i{font-size:18px}
+.rbtn.disabled{opacity:.3;pointer-events:none}
+
 .spacer{flex:1}
 </style>
 </head>
@@ -258,6 +272,36 @@ html,body{height:100%;background:var(--navy);color:var(--text-primary);font-fami
         </div>
         <div class="batt-bar"><div class="batt-fill" id="ride-battery-bar" style="width:0%;background:var(--green)"></div></div>
       </div>
+    </div>
+
+    <!-- Status indicators -->
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;justify-content:center" id="ride-indicators">
+      <span class="ind" id="ind-mode"><i class="ti ti-bolt"></i> <span>—</span></span>
+      <span class="ind" id="ind-brake"><i class="ti ti-lock"></i> <span>—</span></span>
+      <span class="ind" id="ind-light"><i class="ti ti-bulb"></i> <span>—</span></span>
+    </div>
+
+    <!-- Scooter controls -->
+    <div id="ride-controls" style="margin-bottom:12px">
+      <div style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:8px;text-align:center">Controls</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+        <button class="rbtn" onclick="riderCmd('mode')"><i class="ti ti-bolt"></i>Mode</button>
+        <button class="rbtn" onclick="riderCmd('headlight')"><i class="ti ti-bulb"></i>Headlight</button>
+        <button class="rbtn" onclick="riderCmd('sidelight')"><i class="ti ti-sun-low"></i>Side lights</button>
+        <button class="rbtn" onclick="riderCmd('walk')"><i class="ti ti-walk"></i>Walk</button>
+        <button class="rbtn" onclick="riderCmd('cruise')"><i class="ti ti-gps"></i>Cruise</button>
+        <button class="rbtn" onclick="riderCmd('zerostart')"><i class="ti ti-brand-speedtest"></i>Zero Start</button>
+        <button class="rbtn" onclick="riderCmd('alarm')"><i class="ti ti-bell-ringing"></i>Alarm</button>
+        <button class="rbtn" onclick="riderCmd('alarmoff')"><i class="ti ti-bell-off"></i>Alarm Off</button>
+        <button class="rbtn" onclick="riderCmd('metric')"><i class="ti ti-ruler-measure"></i>Metric</button>
+      </div>
+    </div>
+
+    <!-- Admin locked banner -->
+    <div id="admin-locked-warn" style="display:none;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:12px;padding:12px 16px;text-align:center;margin-bottom:8px">
+      <i class="ti ti-lock" style="color:var(--red);font-size:18px;display:block;margin-bottom:4px"></i>
+      <div style="font-size:13px;font-weight:600;color:var(--red)">Controls locked by admin</div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">Contact the service counter</div>
     </div>
 
     <!-- Low balance warning -->
@@ -566,8 +610,53 @@ async function pollRide() {
     const min = Math.floor(elapsed / 60).toString().padStart(2, '0');
     const sec = (elapsed % 60).toString().padStart(2, '0');
     document.getElementById('ride-timer').textContent = min + ':' + sec;
+
+    // Status indicators
+    const modeInd = document.getElementById('ind-mode');
+    modeInd.querySelector('span').textContent = data.mode || '—';
+    modeInd.className = 'ind' + (data.mode === 'S' ? ' warn' : data.mode === 'D' ? ' on' : '');
+
+    const brakeInd = document.getElementById('ind-brake');
+    brakeInd.querySelector('span').textContent = data.brake ? 'Locked' : 'Open';
+    brakeInd.className = 'ind' + (data.brake ? ' danger' : ' on');
+
+    const lightInd = document.getElementById('ind-light');
+    lightInd.querySelector('span').textContent = data.light ? 'ON' : 'OFF';
+    lightInd.className = 'ind' + (data.light ? ' on' : '');
+
+    // Admin lock — disable/enable controls
+    const isLocked = data.locked || false;
+    document.getElementById('admin-locked-warn').style.display = isLocked ? 'block' : 'none';
+    document.querySelectorAll('.rbtn').forEach(btn => {
+      btn.classList.toggle('disabled', isLocked);
+    });
   } catch (err) {
     console.error('Ride poll error:', err);
+  }
+}
+
+// ── Rider command ──
+let cmdCooldown = false;
+async function riderCmd(action) {
+  if (cmdCooldown) return;
+  cmdCooldown = true;
+  setTimeout(() => { cmdCooldown = false; }, 500);
+
+  try {
+    const res = await fetch(SERVER + '/api/rider/command', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ riderId, action })
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      if (data.code === 'admin_locked') {
+        document.getElementById('admin-locked-warn').style.display = 'block';
+        document.querySelectorAll('.rbtn').forEach(btn => btn.classList.add('disabled'));
+      }
+    }
+  } catch (err) {
+    console.error('Command error:', err);
   }
 }
 
